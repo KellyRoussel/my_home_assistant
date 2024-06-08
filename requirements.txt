@@ -1,0 +1,6 @@
+openai
+python-dotenv
+pyaudio
+openai-whisper
+Jinja2
+pynput
