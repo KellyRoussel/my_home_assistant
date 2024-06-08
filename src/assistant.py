@@ -37,6 +37,7 @@ class Assistant:
             if self.recording_thread:
                 self.recording_thread.join()  # Ensure the recording thread has finished
                 self.recording_thread = None
+                print("Recording stopped.")
         except Exception as e:
             raise Exception(f"_stop_recording: {e}")
 
@@ -47,3 +48,8 @@ class Assistant:
         except Exception as e:
             raise Exception(f"{self.__class__.__name__} : start: {e}")
 
+    def stop(self):
+        try:
+            self.audio_recorder.terminate()
+        except Exception as e:
+            raise Exception(f"{self.__class__.__name__} : stop: {e}")

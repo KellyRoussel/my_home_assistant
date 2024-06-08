@@ -16,6 +16,7 @@ class Recorder:
             # Initialize PyAudio
             self._audio = pyaudio.PyAudio()
             self.running_record = None
+            self.is_recording = False
         except Exception as e:
             raise Exception(f"{self.__class__.__name__} : __init__: {e}")
 
@@ -25,6 +26,7 @@ class Recorder:
 
     def start_recording(self, output_filename: str):
         try:
+            self.is_recording = True
             self.running_record = Record(output_filename)
             self.running_record.stream = self._audio.open(format=self.FORMAT,
                                           channels=self.CHANNELS,
@@ -37,9 +39,9 @@ class Recorder:
 
     def stop_recording(self):
         try:
+            self.is_recording = False
             self.running_record.stream.stop_stream()
             self.running_record.stream.close()
-            print("Recording stopped.")
             self.running_record.save(self.CHANNELS, self.sample_size, self.RATE)
             self.running_record = None
         except Exception as e:
@@ -52,7 +54,7 @@ class Recorder:
             last_minute = 0
 
             try:
-                while self.running_record:
+                while self.is_recording:
                     data = self.running_record.stream.read(self.CHUNK)
                     self.running_record.frames.append(data)
                     elapsed_time = time.time() - start_time
@@ -62,8 +64,10 @@ class Recorder:
                         print(f" {minutes_elapsed} minute(s)")
             except KeyboardInterrupt:
                 self.stop_recording()
-            finally:
-                self._audio.terminate()
+
 
         except Exception as e:
             raise Exception(f"{self.__class__.__name__} : record: {e}")
+
+    def terminate(self):
+        self._audio.terminate()
