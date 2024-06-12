@@ -43,9 +43,15 @@ class Recorder:
             self.running_record.stream.stop_stream()
             self.running_record.stream.close()
             self.running_record.save(self.CHANNELS, self.sample_size, self.RATE)
-            self.running_record = None
+            return self.running_record
         except Exception as e:
             raise Exception(f"stop_recording: {e}")
+
+    def reset_record(self):
+        try:
+            self.running_record = None
+        except Exception as e:
+            raise Exception(f"{self.__class__.__name__} : reset_record: {e}")
 
     def record(self, output_filename: str):
         try:
