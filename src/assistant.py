@@ -2,6 +2,7 @@ import threading
 
 from session import AssistantContext, AssistantState
 from llm_engine.llm_engine import LLMEngine
+from tts.speaker import Speaker
 from stt.recorder import Recorder
 from stt.transcriber import Transcriber
 from actions_listener.keyboard_actions_listener import KeyboardActionListener
@@ -20,6 +21,7 @@ class Assistant:
             self.transcriber = Transcriber()
             self.keyboard_listener = KeyboardActionListener()
             self.llm_engine = LLMEngine()
+            self.speaker = Speaker()
             self.keyboard_listener.set_press_callback(self._start_recording)
             self.keyboard_listener.set_release_callback(self._stop_recording)
             self.context = AssistantContext()
@@ -74,6 +76,7 @@ class Assistant:
         try:
             self.state = AssistantState.SPEAKING
             print(response)
+            self.speaker.speak(response)
             self.state = AssistantState.IDLE
         except Exception as e:
             raise Exception(f"_start_speaking: {e}")

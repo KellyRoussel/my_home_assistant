@@ -4,3 +4,4 @@ pyaudio
 openai-whisper
 Jinja2
 pynput
+deepgram-sdk==3.*
