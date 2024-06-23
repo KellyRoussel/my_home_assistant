@@ -1,2 +1,4 @@
 .idea/
 .env
+src/tools/todo_list/secret_token.json
+*/__pycache__

@@ -44,8 +44,15 @@ class Speaker:
                 stderr=subprocess.DEVNULL,
             )
 
+            start_time = time.time()  # Record the time before sending the request
+            first_byte_time = None  # Initialize a variable to store the time when the first byte is received
+
             for chunk in response_stream:
                 if chunk:
+                    if first_byte_time is None:  # Check if this is the first chunk received
+                        first_byte_time = time.time()  # Record the time when the first byte is received
+                        ttfb = int((first_byte_time - start_time) * 1000)  # Calculate the time to first byte
+                        print(f"TTS Time to First Byte (TTFB): {ttfb}ms\n")
                     self.player_process.stdin.write(chunk)
                     self.player_process.stdin.flush()
 

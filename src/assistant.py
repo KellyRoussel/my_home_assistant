@@ -1,3 +1,4 @@
+import os
 import threading
 
 from session import AssistantContext, AssistantState
@@ -44,6 +45,7 @@ class Assistant:
 
     def _stop_recording(self):
         try:
+            start_time = time.time()
             if self.state != AssistantState.RECORDING:
                 return
             print("Space released: stopping recording.")
@@ -57,9 +59,13 @@ class Assistant:
                 print("Recording stopped.")
                 self.state = AssistantState.TRANSCRIBING
                 transcription = self.transcriber.transcribe_online(record_filename)
+                # delete the recording file
+                os.remove(record_filename)
                 print(f"Transcription: {transcription}")
                 self.context.running_conversation.new_user_message(transcription)
                 self._think()
+            end_time = time.time()
+            print(f"Time elapsed: {(end_time - start_time)*1000} ms")
         except Exception as e:
             raise Exception(f"_stop_recording: {e}")
 
@@ -77,6 +83,7 @@ class Assistant:
             self.state = AssistantState.SPEAKING
             print(response)
             self.speaker.speak(response)
+            print("Assistant done speaking.")
             self.state = AssistantState.IDLE
         except Exception as e:
             raise Exception(f"_start_speaking: {e}")
