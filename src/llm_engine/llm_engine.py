@@ -1,16 +1,18 @@
+import json
 import os
 import time
 
 from openai import OpenAI
 from jinja2 import Template
-
-from session import Conversation
+from session.assistant_context import Conversation
+from tools.tool import Tool
 
 
 class LLMEngine:
-    def __init__(self):
+    def __init__(self, tools: list[Tool] = None):
         try:
             self._client = OpenAI()
+            self.tools = tools if tools is not None else []
         except Exception as e:
             raise Exception(f"{self.__class__.__name__} : __init__: {e}")
 
@@ -42,18 +44,24 @@ Always be fun and empathetic.
         except Exception as e:
             raise Exception(f"_get_prompt: {e}")
 
-
     def gpt_call(self, conversation: Conversation):
         try:
+            print([tool.json_definition for tool in self.tools])
+            # write that list in a json file
+            with open('tools.json', 'w') as f:
+                json.dump([tool.json_definition for tool in self.tools], f, indent=4)
+
             start_time = time.time()
             prompt = self._get_prompt()
-            completion = self.client.chat.completions.create(
+            response = self.client.chat.completions.create(
                 model="gpt-4o",
                 messages=[
-                    {"role": "system", "content": prompt}
-                ] + conversation.to_openai_conversation()
+                             {"role": "system", "content": prompt}
+                         ] + conversation.to_openai_conversation(),
+                tools=[tool.json_definition for tool in self.tools]
             )
-            print(f"Completion took {int(time.time() - start_time)*1000} ms")
-            return completion.choices[0].message.content
+            print(f"Completion took {int(time.time() - start_time) * 1000} ms")
+            response_message = response.choices[0].message
+            return response_message
         except Exception as e:
             raise Exception(f"gpt_call: {e}")

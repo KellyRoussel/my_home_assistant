@@ -1,5 +1,3 @@
-from abc import ABC
-
 from .entities.todo_list import TodoList
 from .todo_tool import TodoTool
 from ..tool_parameter import ToolParameter
@@ -17,10 +15,10 @@ class AddTodoItemToList(TodoTool):
 
     @property
     def parameters(self) -> list[ToolParameter]:
-        return [ToolParameter("list_name", "The name of the list", "string", required=True, enum=['courses']),
+        return [ToolParameter("list_name", "The name of the list", "string", required=True, enum=['shopping']),
                 ToolParameter("item_name", "The name of the item", "string", required=True)]
 
-    def add_item_to_list(self, list_name: str, item_name: str):
+    def execute(self, list_name: str, item_name: str):
         try:
             todo_list: TodoList = self._get_todo_list_from_name(list_name)
             return todo_list.add_item(self._get_access_token(), item_name)

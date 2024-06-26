@@ -1,6 +1,5 @@
-# enum AssistantState { OFF, IDLE, RECORDING, TRANSCRIBING, SPEAKING }
-import json
 from enum import Enum
+from .conversation import Conversation
 
 AssistantState = Enum('AssistantState', ['OFF', 'IDLE', 'RECORDING', 'TRANSCRIBING', 'SPEAKING', 'THINKING'])
 

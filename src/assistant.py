@@ -1,8 +1,11 @@
+import json
 import os
 import threading
 
-from session import AssistantContext, AssistantState
+from session.assistant_context import AssistantContext, AssistantState
 from llm_engine.llm_engine import LLMEngine
+from session.tool_call import ToolCall
+from tools.tools_library import tools
 from tts.speaker import Speaker
 from stt.recorder import Recorder
 from stt.transcriber import Transcriber
@@ -21,7 +24,7 @@ class Assistant:
             self.audio_recorder = Recorder()
             self.transcriber = Transcriber()
             self.keyboard_listener = KeyboardActionListener()
-            self.llm_engine = LLMEngine()
+            self.llm_engine = LLMEngine(tools=tools.values())
             self.speaker = Speaker()
             self.keyboard_listener.set_press_callback(self._start_recording)
             self.keyboard_listener.set_release_callback(self._stop_recording)
@@ -60,7 +63,7 @@ class Assistant:
                 self.state = AssistantState.TRANSCRIBING
                 transcription = self.transcriber.transcribe_online(record_filename)
                 # delete the recording file
-                os.remove(record_filename)
+               # os.remove(record_filename)
                 print(f"Transcription: {transcription}")
                 self.context.running_conversation.new_user_message(transcription)
                 self._think()
@@ -73,10 +76,29 @@ class Assistant:
         try:
             self.state = AssistantState.THINKING
             response = self.llm_engine.gpt_call(self.context.running_conversation)
-            self.context.running_conversation.new_assistant_message(response)
-            self._speak(response)
+            tool_calls_response = response.tool_calls
+            # Check if the model wanted to call a function
+            if tool_calls_response:
+                tool_calls = [ToolCall(tool_call.id, tool_call.function.name, json.loads(tool_call.function.arguments)) for tool_call in tool_calls_response]
+                self.context.running_conversation.new_assistant_message(response.content, tool_calls)
+                self._call_tools(tool_calls)
+                self._think()
+            else:
+                response_message = response.content
+                self.context.running_conversation.new_assistant_message(response_message)
+                self._speak(response_message)
         except Exception as e:
-            raise Exception(f"_start_thinking: {e}")
+            raise Exception(f"_think: {e}")
+
+    def _call_tools(self, tool_calls: list[ToolCall]):
+        try:
+            # Send the info for each function call and function response to the model
+            for tool_call in tool_calls:
+                self.context.running_conversation.new_tool_message(
+                    tool_call
+                )
+        except Exception as e:
+            raise Exception(f"_call_tools: {e}")
 
     def _speak(self, response):
         try:
@@ -86,7 +108,7 @@ class Assistant:
             print("Assistant done speaking.")
             self.state = AssistantState.IDLE
         except Exception as e:
-            raise Exception(f"_start_speaking: {e}")
+            raise Exception(f"_speak: {e}")
 
     def start(self):
         try:

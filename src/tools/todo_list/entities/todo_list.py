@@ -65,7 +65,7 @@ class TodoList:
         except Exception as e:
             raise Exception(f"{self.__class__.__name__} : __get_items: {e}")
 
-    def add_item(self, access_token: str, item_name: str) -> None:
+    def add_item(self, access_token: str, item_name: str) -> str:
         """
         Add an item to the todo list
         :param access_token: Access token
@@ -79,5 +79,6 @@ class TodoList:
 
             response = requests.post(self._url, headers=self.__get_headers(access_token), json=payload)
             response.raise_for_status()
+            return f"{item_name} added to {self.display_name}"
         except Exception as e:
             raise Exception(f"{self.__class__.__name__} : __add_item: {e}")
