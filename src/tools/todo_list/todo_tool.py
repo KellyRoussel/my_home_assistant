@@ -13,7 +13,7 @@ os.environ['OAUTHLIB_RELAX_TOKEN_SCOPE'] = '1'  # https://github.com/VannTen/oau
 
 
 class TodoTool(Tool, ABC):
-    token_file = './src/tools/todo_list/secret_token.json'
+    token_file = './tools/todo_list/secret_token.json'
 
     def __init__(self):
         try:
@@ -60,7 +60,7 @@ class TodoTool(Tool, ABC):
 
             todo_lists = response.json()['value']
 
-            todo_list = next((item for item in todo_lists if item['displayName'] == name), None)
+            todo_list = next((item for item in todo_lists if item['displayName'].lower() == name), None)
 
             if todo_list is None:
                 raise Exception(f"Could not find list with name: {name}")

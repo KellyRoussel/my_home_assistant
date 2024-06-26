@@ -1,8 +1,3 @@
-
-from abc import ABC
-
-import requests
-
 from .entities.items import TodoItem
 from .entities.todo_list import TodoList
 from .todo_tool import TodoTool
@@ -23,7 +18,7 @@ class GetTodoListTool(TodoTool):
     def parameters(self) -> list[ToolParameter]:
         return [ToolParameter("list_name", "The name of the list", "string", required=True, enum=['courses'])]
 
-    def get_todo_list_items(self, name: str) -> list[TodoItem]:
+    def execute(self, name: str) -> list[TodoItem]:
         try:
             todo_list: TodoList = self._get_todo_list_from_name(name)
             return todo_list.get_items(self._get_access_token())

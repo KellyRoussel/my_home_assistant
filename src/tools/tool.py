@@ -5,18 +5,15 @@ from tools.tool_parameter import ToolParameter
 
 class Tool(ABC):
 
-
     @property
     @abstractmethod
     def tool_name(self) -> str:
         raise NotImplementedError
 
-
     @property
     @abstractmethod
     def description(self) -> str:
         raise NotImplementedError
-
 
     @property
     @abstractmethod
@@ -38,3 +35,7 @@ class Tool(ABC):
                 }
             }
         }
+
+    @abstractmethod
+    def execute(self, **kwargs):
+        raise NotImplementedError
