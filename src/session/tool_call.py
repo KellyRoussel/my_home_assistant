@@ -1,5 +1,4 @@
 import json
-
 from tools.tool import Tool
 from tools.tools_library import tools
 

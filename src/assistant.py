@@ -1,5 +1,4 @@
 import json
-import os
 import threading
 
 from session.assistant_context import AssistantContext, AssistantState
@@ -48,13 +47,11 @@ class Assistant:
 
     def _stop_recording(self):
         try:
-            start_time = time.time()
             if self.state != AssistantState.RECORDING:
                 return
             print("Space released: stopping recording.")
             ended_record = self.audio_recorder.stop_recording()
             record_filename = ended_record.output_filename
-            print(f"Recording saved to {record_filename}")
             self.audio_recorder.reset_record()
             if self.recording_thread:
                 self.recording_thread.join()  # Ensure the recording thread has finished
@@ -67,8 +64,6 @@ class Assistant:
                 print(f"Transcription: {transcription}")
                 self.context.running_conversation.new_user_message(transcription)
                 self._think()
-            end_time = time.time()
-            print(f"Time elapsed: {(end_time - start_time)*1000} ms")
         except Exception as e:
             raise Exception(f"_stop_recording: {e}")
 
@@ -105,7 +100,6 @@ class Assistant:
             self.state = AssistantState.SPEAKING
             print(response)
             self.speaker.speak(response)
-            print("Assistant done speaking.")
             self.state = AssistantState.IDLE
         except Exception as e:
             raise Exception(f"_speak: {e}")

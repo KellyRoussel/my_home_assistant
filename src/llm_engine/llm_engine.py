@@ -1,17 +1,17 @@
-import json
 import os
-import time
-
 from openai import OpenAI
 from jinja2 import Template
 from session.assistant_context import Conversation
 from tools.tool import Tool
-
+from groq import Groq
 
 class LLMEngine:
     def __init__(self, tools: list[Tool] = None):
         try:
-            self._client = OpenAI()
+            #self._client = OpenAI()
+            #self._model = "gpt-4o"
+            self._client = Groq()
+            self._model = "llama3-70b-8192"
             self.tools = tools if tools is not None else []
         except Exception as e:
             raise Exception(f"{self.__class__.__name__} : __init__: {e}")
@@ -46,21 +46,14 @@ Always be fun and empathetic.
 
     def gpt_call(self, conversation: Conversation):
         try:
-            print([tool.json_definition for tool in self.tools])
-            # write that list in a json file
-            with open('tools.json', 'w') as f:
-                json.dump([tool.json_definition for tool in self.tools], f, indent=4)
-
-            start_time = time.time()
             prompt = self._get_prompt()
             response = self.client.chat.completions.create(
-                model="gpt-4o",
+                model=self._model,
                 messages=[
                              {"role": "system", "content": prompt}
                          ] + conversation.to_openai_conversation(),
                 tools=[tool.json_definition for tool in self.tools]
             )
-            print(f"Completion took {int(time.time() - start_time) * 1000} ms")
             response_message = response.choices[0].message
             return response_message
         except Exception as e:

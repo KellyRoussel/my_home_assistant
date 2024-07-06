@@ -1,5 +1,3 @@
-import time
-
 from openai import OpenAI
 import whisper
 class Transcriber:
@@ -12,13 +10,11 @@ class Transcriber:
 
     def transcribe_online(self, audio_filename: str):
         try:
-            start_time = time.time()
             audio_file = open(audio_filename, "rb")
             transcription = self.client.audio.transcriptions.create(
                 model="whisper-1",
                 file=audio_file
             )
-            print(f"Transcription took {(time.time() - start_time)*1000} ms")
             return transcription.text
 
         except Exception as e:
