@@ -42,7 +42,7 @@ class TodoTool(Tool, ABC):
 
             self.token = oa_sess.refresh_token('https://login.microsoftonline.com/common/oauth2/v2.0/token',
                                                client_id=self.client_id, client_secret=self.client_secret)
-            json.dump(self.token, open(self.token_file, 'w'))
+            json.dump(self.token, open(self.token_file, 'w'), indent=4)
         except Exception as e:
             raise Exception(f"__refresh_token: {e}")
 
