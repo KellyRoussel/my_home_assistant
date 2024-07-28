@@ -1,14 +1,18 @@
 import json
 import threading
-
+import os
 from session.assistant_context import AssistantContext, AssistantState
 from llm_engine.llm_engine import LLMEngine
 from session.tool_call import ToolCall
 from tools.tools_library import tools
-from tts.speaker import Speaker
+#from tts.deepgram_speaker import DeepgramSpeaker
+#from tts.elevenlabs_speaker import ElevenLabsSpeaker
+from tts.openai_speaker import OpenaiSpeaker
 from stt.recorder import Recorder
 from stt.transcriber import Transcriber
 from actions_listener.keyboard_actions_listener import KeyboardActionListener
+#from actions_listener.button_action_listener import ButtonActionListener
+#from actions_listener.bluetooth_action_listener import BluetoothButtonActionListener
 import time
 
 class Assistant:
@@ -22,11 +26,15 @@ class Assistant:
         try:
             self.audio_recorder = Recorder()
             self.transcriber = Transcriber()
-            self.keyboard_listener = KeyboardActionListener()
+            #self.action_listener = ButtonActionListener(2)
+            #self.action_listener = BluetoothButtonActionListener('/dev/input/event3')
+            self.action_listener = KeyboardActionListener()
             self.llm_engine = LLMEngine(tools=tools.values())
-            self.speaker = Speaker()
-            self.keyboard_listener.set_press_callback(self._start_recording)
-            self.keyboard_listener.set_release_callback(self._stop_recording)
+            self.speaker = OpenaiSpeaker()
+            #self.speaker = ElevenLabsSpeaker()
+            #self.speaker = DeepgramSpeaker()
+            self.action_listener.set_press_callback(self._start_recording)
+            self.action_listener.set_release_callback(self._stop_recording)
             self.context = AssistantContext()
             self.state = AssistantState.OFF
         except Exception as e:
@@ -60,7 +68,7 @@ class Assistant:
                 self.state = AssistantState.TRANSCRIBING
                 transcription = self.transcriber.transcribe_online(record_filename)
                 # delete the recording file
-               # os.remove(record_filename)
+                os.remove(record_filename)
                 print(f"Transcription: {transcription}")
                 self.context.running_conversation.new_user_message(transcription)
                 self._think()
@@ -108,7 +116,7 @@ class Assistant:
         try:
             self.state = AssistantState.IDLE
             print("Assistant started. Listening for keyboard events...")
-            self.keyboard_listener.start_listening()
+            self.action_listener.start_listening()
         except Exception as e:
             raise Exception(f"{self.__class__.__name__} : start: {e}")
 

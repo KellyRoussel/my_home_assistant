@@ -5,3 +5,7 @@ openai-whisper
 Jinja2
 pynput
 deepgram-sdk==3.*
+requests_oauthlib
+groq
+gpiozero
+elevenlabs

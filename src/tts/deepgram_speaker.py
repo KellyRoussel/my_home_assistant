@@ -1,8 +1,7 @@
-import re
 import subprocess
 from deepgram import DeepgramClient, SpeakOptions
 
-class Speaker:
+class DeepgramSpeaker:
 
     def __init__(self):
         try:
@@ -11,15 +10,6 @@ class Speaker:
 
         except Exception as e:
             raise Exception(f"{self.__class__.__name__} : __init__: {e}")
-
-
-    def _segment_text_by_sentence(self, text):
-        try:
-            return re.findall(r"[^.!?]+[.!?]", text)
-        except Exception as e:
-            raise Exception(f"_segment_text_by_sentence: {e}")
-
-    # todo: https://developers.deepgram.com/docs/text-chunking-for-tts-optimization
 
 
     def speak(self, text: str):

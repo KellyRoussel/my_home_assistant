@@ -1,5 +1,6 @@
 from openai import OpenAI
 import whisper
+
 class Transcriber:
 
     def __init__(self):
