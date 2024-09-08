@@ -68,7 +68,7 @@ class Assistant:
                 self.state = AssistantState.TRANSCRIBING
                 transcription = self.transcriber.transcribe_online(record_filename)
                 # delete the recording file
-                os.remove(record_filename)
+                #os.remove(record_filename)
                 print(f"Transcription: {transcription}")
                 self.context.running_conversation.new_user_message(transcription)
                 self._think()
