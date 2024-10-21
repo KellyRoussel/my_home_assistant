@@ -1,7 +1,7 @@
 import requests
 
 from tools.todo_list.entities.items import TodoItem
-
+from logger import ErrorMessage, AppMessage, logger
 
 class TodoList:
 
@@ -22,6 +22,7 @@ class TodoList:
                 json['isShared']
             )
         except Exception as e:
+            logger.log(ErrorMessage(content=f"{cls.__name__} : from_json: {e}"))
             raise Exception(f"{cls.__name__} : from_json: {e}")
 
     @property
@@ -56,6 +57,7 @@ class TodoList:
         :return: List of items
         """
         try:
+            logger.log(AppMessage(content=f"Get items from {self.display_name}"))
             response = requests.get(self._url, headers=self.__get_headers(access_token))
             response.raise_for_status()
 
@@ -63,6 +65,7 @@ class TodoList:
             return [TodoItem.from_json(item) for item in items]
 
         except Exception as e:
+            logger.log(ErrorMessage(content=f"{self.__class__.__name__} : __get_items: {e}"))
             raise Exception(f"{self.__class__.__name__} : __get_items: {e}")
 
     def add_item(self, access_token: str, item_name: str) -> str:
@@ -73,6 +76,7 @@ class TodoList:
         :return: None
         """
         try:
+            logger.log(AppMessage(content=f"Add {item_name} to {self.display_name}"))
             payload = {
                 'title': item_name
             }
@@ -81,4 +85,5 @@ class TodoList:
             response.raise_for_status()
             return f"{item_name} added to {self.display_name}"
         except Exception as e:
+            logger.log(ErrorMessage(content=f"{self.__class__.__name__} : __add_item: {e}"))
             raise Exception(f"{self.__class__.__name__} : __add_item: {e}")

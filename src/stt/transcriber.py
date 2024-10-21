@@ -1,6 +1,6 @@
 from openai import OpenAI
 import whisper
-
+from logger import logger, ErrorMessage
 class Transcriber:
 
     def __init__(self):
@@ -19,6 +19,7 @@ class Transcriber:
             return transcription.text
 
         except Exception as e:
+            logger.log(ErrorMessage(content=f"{self.__class__.__name__} :transcribe_online: {e}"))
             raise Exception(f"{self.__class__.__name__} :transcribe_online: {e}")
 
     def transcribe_local(self, audio_filename: str):
@@ -29,4 +30,5 @@ class Transcriber:
             return result["text"]
 
         except Exception as e:
+            logger.log(ErrorMessage(content=f"{self.__class__.__name__} :transcribe_local: {e}"))
             raise Exception(f"{self.__class__.__name__} :transcribe_local: {e}")

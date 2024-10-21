@@ -18,6 +18,8 @@ class SpotifyTool(Tool, ABC):
                                           redirect_uri=redirect_uri))
 
             devices = self.sp.devices()
+            if len(devices['devices']) == 0:
+                return
             self.current_device = devices['devices'][0] # TODO: replace with raspberry client
         except Exception as e:
             raise Exception(f"SpotifyTool: {e}")

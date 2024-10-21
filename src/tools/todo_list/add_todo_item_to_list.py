@@ -1,7 +1,7 @@
 from .entities.todo_list import TodoList
 from .todo_tool import TodoTool
 from ..tool_parameter import ToolParameter
-
+from logger import logger, ErrorMessage
 
 class AddTodoItemToList(TodoTool):
 
@@ -24,4 +24,5 @@ class AddTodoItemToList(TodoTool):
             return todo_list.add_item(self._get_access_token(), item_name)
 
         except Exception as e:
+            logger.log(ErrorMessage(content=f"{self.__class__.__name__} : get_todo_list_items: {e}"))
             raise Exception(f"{self.__class__.__name__} : get_todo_list_items: {e}")

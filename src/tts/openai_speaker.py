@@ -1,6 +1,6 @@
 import subprocess
 from openai import OpenAI
-
+from logger import logger, ErrorMessage
 class OpenaiSpeaker:
 
     def __init__(self):
@@ -9,6 +9,7 @@ class OpenaiSpeaker:
             self.player_command = ["ffplay", "-autoexit", "-", "-nodisp"]
 
         except Exception as e:
+            logger.log(ErrorMessage(content=f"{self.__class__.__name__} : __init__: {e}"))
             raise Exception(f"{self.__class__.__name__} : __init__: {e}")
 
 
@@ -42,6 +43,7 @@ class OpenaiSpeaker:
             self.player_process.wait()
 
         except Exception as e:
-            raise Exception(f"speak: {e}")
+            logger.log(ErrorMessage(content=f"{self.__class__.__name__} : speak: {e}"))
+            raise Exception(f"{self.__class__.__name__} : speak: {e}")
 
 
