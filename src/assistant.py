@@ -1,3 +1,4 @@
+import asyncio
 import json
 import threading
 import os
@@ -12,9 +13,9 @@ from tools.tools_library import tools
 from tts.openai_speaker import OpenaiSpeaker
 from stt.recorder import Recorder
 from stt.transcriber import Transcriber
-from actions_listener.keyboard_actions_listener import KeyboardActionListener
+#from actions_listener.keyboard_actions_listener import KeyboardActionListener
 #from actions_listener.button_action_listener import ButtonActionListener
-#from actions_listener.bluetooth_action_listener import BluetoothButtonActionListener
+from actions_listener.bluetooth_action_listener import BluetoothButtonActionListener
 import time
 
 class Assistant:
@@ -30,7 +31,8 @@ class Assistant:
             self.transcriber = Transcriber()
             #self.action_listener = ButtonActionListener(2)
             #self.action_listener = BluetoothButtonActionListener('PICO V0.1:86D26611FFF')
-            self.action_listener = KeyboardActionListener()
+            self.action_listener = BluetoothButtonActionListener('AB Shutter3')
+            #self.action_listener = KeyboardActionListener()
             self.llm_engine = LLMEngine(tools=tools.values())
             self.speaker = OpenaiSpeaker()
             #self.speaker = ElevenLabsSpeaker()
@@ -134,15 +136,17 @@ class Assistant:
             self.state = AssistantState.IDLE
             print("Assistant started. Listening for keyboard events...")
             logger.log(AppMessage(content="Start listening for events"))
-            self.action_listener.start_listening()
+            asyncio.create_task(self.action_listener.start_listening())
         except Exception as e:
             logger.log(ErrorMessage(content=f"{self.__class__.__name__} : start: {e}"))
             raise Exception(f"{self.__class__.__name__} : start: {e}")
 
     def stop(self):
         try:
+            self.action_listener.stop_listening()
             self.audio_recorder.terminate()
             self.state = AssistantState.OFF
         except Exception as e:
             logger.log(ErrorMessage(content=f"{self.__class__.__name__} : stop: {e}"))
             raise Exception(f"{self.__class__.__name__} : stop: {e}")
+

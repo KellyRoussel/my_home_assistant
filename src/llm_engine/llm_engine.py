@@ -12,7 +12,7 @@ class LLMEngine:
             #self._client = OpenAI()
             #self._model = "gpt-4o"
             self._client = Groq()
-            self._model = "llama3-70b-8192"
+            self._model = "llama-3.1-70b-versatile" #"llama3-70b-8192"
             self.tools = tools if tools is not None else []
         except Exception as e:
             logger.log(ErrorMessage(content=f"{self.__class__.__name__} : __init__: {e}"))

@@ -1,0 +1,37 @@
+[
+    {
+        "role": "app",
+        "content": "Start listening for events",
+        "timestamp": "2024-10-21T21:26:28.595677"
+    },
+    {
+        "role": "app",
+        "content": "Start recording",
+        "timestamp": "2024-10-21T21:26:28.595677"
+    },
+    {
+        "role": "app",
+        "content": "Recorder: Start recording",
+        "timestamp": "2024-10-21T21:26:28.595677"
+    },
+    {
+        "role": "app",
+        "content": "Stop recording",
+        "timestamp": "2024-10-21T21:26:28.595677"
+    },
+    {
+        "role": "app",
+        "content": "Audio saved to recording_1729538827.wav",
+        "timestamp": "2024-10-21T21:26:28.595677"
+    },
+    {
+        "role": "user",
+        "content": "Salut, comment \u00e7a va ?",
+        "timestamp": "2024-10-21T21:26:28.595677"
+    },
+    {
+        "role": "assistant",
+        "content": "Bonjour Kelly ! Comment vas-tu aujourd'hui ? J'esp\u00e8re que tout se passe bien pour toi !",
+        "timestamp": "2024-10-21T21:26:28.595677"
+    }
+]

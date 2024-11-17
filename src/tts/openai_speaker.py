@@ -1,3 +1,4 @@
+import os
 import subprocess
 from openai import OpenAI
 from logger import logger, ErrorMessage
@@ -15,7 +16,7 @@ class OpenaiSpeaker:
 
     def speak(self, text: str):
         try:
-
+            os.system("amixer sset 'Master' 50%")
             # Call the stream method on the speak property
             response = self.client.audio.speech.create(
                 model="tts-1",
