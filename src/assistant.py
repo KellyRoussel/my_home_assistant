@@ -2,7 +2,7 @@ import asyncio
 import json
 import threading
 import os
-
+import subprocess
 from logger import Logger, AppMessage, ErrorMessage, ConversationMessage, logger
 from session.assistant_context import AssistantContext, AssistantState
 from llm_engine.llm_engine import LLMEngine
@@ -15,7 +15,8 @@ from stt.recorder import Recorder
 from stt.transcriber import Transcriber
 #from actions_listener.keyboard_actions_listener import KeyboardActionListener
 #from actions_listener.button_action_listener import ButtonActionListener
-from actions_listener.bluetooth_action_listener import BluetoothButtonActionListener
+#from actions_listener.bluetooth_action_listener import BluetoothButtonActionListener
+from actions_listener.wake_word_listener import WakeWordListener
 import time
 
 class Assistant:
@@ -31,21 +32,31 @@ class Assistant:
             self.transcriber = Transcriber()
             #self.action_listener = ButtonActionListener(2)
             #self.action_listener = BluetoothButtonActionListener('PICO V0.1:86D26611FFF')
-            self.action_listener = BluetoothButtonActionListener('AB Shutter3')
+            #self.action_listener = BluetoothButtonActionListener(['AB Shutter3', 'PICO V0.1:86D26611FFF'])
             #self.action_listener = KeyboardActionListener()
+            self.action_listener = WakeWordListener()
             self.llm_engine = LLMEngine(tools=tools.values())
             self.speaker = OpenaiSpeaker()
             #self.speaker = ElevenLabsSpeaker()
             #self.speaker = DeepgramSpeaker()
-            self.action_listener.set_press_callback(self._start_recording)
-            self.action_listener.set_release_callback(self._stop_recording)
+            self.action_listener.set_detection_callback(self._start_recording)
+            #self.action_listener.set_release_callback(self._stop_recording)
             self.context = AssistantContext()
             self.state = AssistantState.OFF
         except Exception as e:
             raise Exception(f"{self.__class__.__name__} : __init__: {e}")
 
+    def notify_detection(self):
+        player_command = ["ffplay", "-nodisp", "-autoexit", "./listening.mp3"]
+
+        # Start the process and wait for it to finish
+        subprocess.run(player_command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
     def _start_recording(self):
         try:
+            self.action_listener.pause()
+            self.notify_detection()
             if self.state != AssistantState.IDLE:
                 return
             self.state = AssistantState.RECORDING
@@ -53,37 +64,43 @@ class Assistant:
             logger.log(AppMessage(content="Start recording"))
             # let's give a name to the output file with a timestamp to avoid overwriting
             output_filename = f"recording_{int(time.time())}.wav"
-            self.recording_thread = threading.Thread(target=self.audio_recorder.record, args=(output_filename,))
-            self.recording_thread.start()
+            #self.recording_thread = threading.Thread(target=self.audio_recorder.record, args=(output_filename,))
+            #self.recording_thread.start()
+            ended_record = self.audio_recorder.record(output_filename)
+            print(f"ended_record: {ended_record}")
+            self._stop_recording(ended_record)
         except Exception as e:
             logger.log(ErrorMessage(content=f"_start_recording: {e}"))
             raise Exception(f"_start_recording: {e}")
 
-    def _stop_recording(self):
+    def _stop_recording(self, ended_record):
         try:
             if self.state != AssistantState.RECORDING:
                 return
             print("Space released: stopping recording.")
             logger.log(AppMessage(content="Stop recording"))
-            ended_record = self.audio_recorder.stop_recording()
+            #ended_record = self.audio_recorder.stop_recording()
             if ended_record is None:
                 self.state = AssistantState.IDLE
+                self.action_listener.resume()
                 return
             record_filename = ended_record.output_filename
             self.audio_recorder.reset_record()
-            if self.recording_thread:
-                self.recording_thread.join()  # Ensure the recording thread has finished
-                self.recording_thread = None
-                print("Recording stopped.")
+            #if self.recording_thread:
+                #self.recording_thread.join()  # Ensure the recording thread has finished
+                #self.recording_thread = None
+            print("Recording stopped.")
                 # length of record_file
-                self.state = AssistantState.TRANSCRIBING
-                transcription = self.transcriber.transcribe_online(record_filename)
-                logger.log(ConversationMessage(role='user', content=transcription))
-                # delete the recording file
-                #os.remove(record_filename)
-                print(f"Transcription: {transcription}")
-                self.context.running_conversation.new_user_message(transcription)
-                self._think()
+            self.state = AssistantState.TRANSCRIBING
+            transcription = self.transcriber.transcribe_online(record_filename)
+            logger.log(ConversationMessage(role='user', content=transcription))
+            # delete the recording file
+            os.remove(record_filename)
+            print(f"Transcription: {transcription}")
+            self.context.running_conversation.new_user_message(transcription)
+            self._think()
+            self.action_listener.resume()
+            #self._start_recording()
         except Exception as e:
             logger.log(ErrorMessage(content=f"_stop_recording: {e}"))
             raise Exception(f"_stop_recording: {e}")
