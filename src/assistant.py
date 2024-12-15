@@ -46,7 +46,7 @@ class Assistant:
         except Exception as e:
             raise Exception(f"{self.__class__.__name__} : __init__: {e}")
 
-    def notify_detection(self):
+    def notify_sound(self):
         player_command = ["ffplay", "-nodisp", "-autoexit", "./listening.mp3"]
 
         # Start the process and wait for it to finish
@@ -56,7 +56,7 @@ class Assistant:
     def _start_recording(self):
         try:
             self.action_listener.pause()
-            self.notify_detection()
+            #self.notify_sound()
             if self.state != AssistantState.IDLE:
                 return
             self.state = AssistantState.RECORDING
@@ -68,6 +68,7 @@ class Assistant:
             #self.recording_thread.start()
             ended_record = self.audio_recorder.record(output_filename)
             print(f"ended_record: {ended_record}")
+            #self.notify_sound()
             self._stop_recording(ended_record)
         except Exception as e:
             logger.log(ErrorMessage(content=f"_start_recording: {e}"))

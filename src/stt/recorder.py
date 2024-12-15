@@ -3,7 +3,7 @@ import numpy as np
 import time
 from logger import logger, ErrorMessage, AppMessage
 from stt.record import Record
-
+import subprocess
 
 class Recorder:
 
@@ -13,7 +13,7 @@ class Recorder:
     RATE = 44100
     CHUNK = 1024
     SILENCE_THRESHOLD = 500
-    MAX_SILENCE_DURATION = 8
+    MAX_SILENCE_DURATION = 5
 
 
     def __init__(self):
@@ -29,6 +29,15 @@ class Recorder:
     def sample_size(self):
         return np.dtype(self.FORMAT).itemsize
 
+    
+    def notify(self):
+        player_command = ["ffplay", "-nodisp", "-autoexit", "./listening.mp3"]
+
+        # Start the process and wait for it to finish
+        subprocess.run(player_command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+
     def start_recording(self, output_filename: str):
         try:
             self.is_recording = True
@@ -39,6 +48,7 @@ class Recorder:
                 dtype=self.FORMAT,
                 callback=self.callback
             )
+            self.notify()
             self.running_record.stream.start()
             self.silence_frames=0
             print("Recording started...")
@@ -67,6 +77,7 @@ class Recorder:
 
     def stop_recording(self):
         try:
+            self.notify()
             self.running_record.stream.stop()
             self.running_record.stream.close()
             audio_duration = self.running_record.get_duration(self.RATE)
