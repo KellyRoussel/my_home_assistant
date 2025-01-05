@@ -12,10 +12,12 @@ class WakeWordListener:
         self.audio = pyaudio.PyAudio()
         # Load the wake word model
         self.oww_model = Model(wakeword_models=["./actions_listener/hey_jarvis_v0.1.tflite"], inference_framework="tflite")
-        self.mic_stream = self.audio.open(format=pyaudio.paInt16, channels=1, rate=16000, input=True, frames_per_buffer=1280)
+        self.mic_stream = None
 
     async def start_listening(self):
         self.listening = True
+        self.mic_stream = self.audio.open(format=pyaudio.paInt16, channels=1, rate=16000, input=True,
+                                          frames_per_buffer=1280)
         while self.listening:
             if not self._paused:
                 try:
@@ -28,11 +30,11 @@ class WakeWordListener:
                     # Check if any model detected the wakeword
                     for mdl in self.oww_model.prediction_buffer.keys():
                         scores = list(self.oww_model.prediction_buffer[mdl])
-                        print(round(scores[-1],2))
-                        if scores[-1] > 0.5:  # Threshold for detection
+                        #print(round(scores[-1],2))
+                        if scores[-1] > 0.8:  # Threshold for detection
                             if not self._wake_word_is_detected:
                                 self._wake_word_is_detected = True
-                                print("Wakeword detected!")
+                                print(f"Wakeword detected with score: {round(scores[-1],2)}")
                                 self._detect_callback()
                         else:
                             self._wake_word_is_detected = False

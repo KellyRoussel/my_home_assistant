@@ -14,6 +14,7 @@ class Recorder:
     CHUNK = 1024
     SILENCE_THRESHOLD = 500
     MAX_SILENCE_DURATION = 5
+    RECORD_MAX_DURATION = 60
 
 
     def __init__(self):
@@ -72,6 +73,10 @@ class Recorder:
         if self.silence_frames >= (self.RATE / self.CHUNK) * self.MAX_SILENCE_DURATION:
             if self.is_recording:
                 print("Silence detected, stopping recording...")
+                self.is_recording = False
+        if len(self.running_record.frames) >= (self.RATE / self.CHUNK) * self.RECORD_MAX_DURATION:
+            if self.is_recording:
+                print("Max duration reached, stopping recording...")
                 self.is_recording = False
         
 
