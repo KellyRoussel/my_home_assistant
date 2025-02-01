@@ -45,7 +45,7 @@ class Recorder:
             print(f"ffplay timed out on attempt")
             logger.log(ErrorMessage(content=f"{self.__class__.__name__} : notify : ffplay timed out - remaining {retries} attempts"))
             if retries > 0:
-                return notify(retries=retries-1)
+                return self.notify(retries=retries-1)
 
 
     def start_recording(self, output_filename: str):
