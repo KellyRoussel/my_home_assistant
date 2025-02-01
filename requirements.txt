@@ -13,3 +13,5 @@ fastapi==0.115.2
 spotipy==2.24.0
 uvicorn==0.32.0
 openwakeword==0.5.1
+openmeteo-requests
+geopy
