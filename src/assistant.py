@@ -92,14 +92,16 @@ class Assistant:
                 #self.recording_thread = None
             print("Recording stopped.")
                 # length of record_file
-            self.state = AssistantState.TRANSCRIBING
-            transcription = self.transcriber.transcribe_online(record_filename)
-            logger.log(ConversationMessage(role='user', content=transcription))
-            # delete the recording file
-            os.remove(record_filename)
-            print(f"Transcription: {transcription}")
-            self.context.running_conversation.new_user_message(transcription)
-            self._think()
+            try:
+                self.state = AssistantState.TRANSCRIBING
+                transcription = self.transcriber.transcribe_online(record_filename)
+                # delete the recording file
+                os.remove(record_filename)
+                print(f"Transcription: {transcription}")
+                self.context.running_conversation.new_user_message(transcription)
+                self._think()
+            except Exception as e:
+                logger.log(ErrorMessage(content=f"_stop_recording - skipping : {e}"))
             self.action_listener.resume()
             #self._start_recording()
         except Exception as e:
@@ -115,15 +117,13 @@ class Assistant:
             if tool_calls_response:
                 tool_calls = [ToolCall(tool_call.id, tool_call.function.name, json.loads(tool_call.function.arguments)) for tool_call in tool_calls_response]
                 self.context.running_conversation.new_assistant_message(response.content, tool_calls)
-                json_tool_calls = [f"Calling tool {tool_call.function_name} with args: {tool_call.arguments}" for tool_call in tool_calls]
-                logger.log(ConversationMessage(role='tool', content=json.dumps(json_tool_calls, indent=4)))
                 self._call_tools(tool_calls)
                 self._think()
             else:
                 response_message = response.content
-                self.context.running_conversation.new_assistant_message(response_message)
-                logger.log(ConversationMessage(role='assistant', content=response_message))
-                self._speak(response_message)
+                sanitized_text = response_message.encode("latin-1", errors="ignore").decode('latin-1')
+                self.context.running_conversation.new_assistant_message(sanitized_text)
+                self._speak(sanitized_text)
         except Exception as e:
             logger.log(ErrorMessage(content=f"_think: {e}"))
             raise Exception(f"_think: {e}")

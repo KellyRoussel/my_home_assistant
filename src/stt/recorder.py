@@ -31,12 +31,21 @@ class Recorder:
         return np.dtype(self.FORMAT).itemsize
 
     
-    def notify(self):
-        player_command = ["ffplay", "-nodisp", "-autoexit", "./listening.mp3"]
+    def notify(self, retries=1):
+        try:
+            player_command = ["ffplay", "-nodisp", "-autoexit", "./listening.mp3"]
+            start_time = time.perf_counter()  # Démarre le chrono
+            # Start the process and wait for it to finish
+            subprocess.run(player_command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=1.5)
+            end_time = time.perf_counter()  # Fin du chrono
 
-        # Start the process and wait for it to finish
-        subprocess.run(player_command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-
+            duration = end_time - start_time
+            logger.log(AppMessage(content=f"ffplay a duré {duration:.2f} secondes."))
+        except subprocess.TimeoutExpired:
+            print(f"ffplay timed out on attempt")
+            logger.log(ErrorMessage(content=f"{self.__class__.__name__} : notify : ffplay timed out - remaining {retries} attempts"))
+            if retries > 0:
+                return notify(retries=retries-1)
 
 
     def start_recording(self, output_filename: str):
@@ -82,15 +91,22 @@ class Recorder:
 
     def stop_recording(self):
         try:
-            self.notify()
+            print("stop_recording")
             self.running_record.stream.stop()
+            print("stream stopped")
             self.running_record.stream.close()
+            print("stream closed")
+            self.notify()
+            print("notif done")
             audio_duration = self.running_record.get_duration(self.RATE)
+            
+            print(f"audio duration: {audio_duration}")
             if audio_duration < 0.001: # seconds
                 print("Recording too short, skipping...")
                 logger.log(AppMessage(content="Recording too short, skipping..."))
                 return None
             self.running_record.save(self.CHANNELS, self.sample_size, self.RATE)
+        
             return self.running_record
         except Exception as e:
             print("ERREUR")
@@ -108,6 +124,7 @@ class Recorder:
         try:
             self.start_recording(output_filename)
             while self.is_recording:
+                print("is_recording")
                 time.sleep(1)  # Adjust the sleep time as needed
             return self.stop_recording()
         except KeyboardInterrupt:
