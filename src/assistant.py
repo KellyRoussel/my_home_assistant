@@ -3,6 +3,7 @@ import json
 import threading
 import os
 import subprocess
+from llm_engine.real_time_engine import RealTimeEngine
 from logger import Logger, AppMessage, ErrorMessage, ConversationMessage, logger
 from session.assistant_context import AssistantContext, AssistantState
 from llm_engine.llm_engine import LLMEngine
@@ -36,6 +37,8 @@ class Assistant:
             #self.action_listener = KeyboardActionListener()
             self.action_listener = WakeWordListener()
             self.llm_engine = LLMEngine(tools=tools.values())
+            self.real_time_engine = RealTimeEngine(tools=tools.values())
+            self.enable_real_time = True
             self.speaker = OpenaiSpeaker()
             #self.speaker = ElevenLabsSpeaker()
             #self.speaker = DeepgramSpeaker()
@@ -53,10 +56,10 @@ class Assistant:
         subprocess.run(player_command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
-    def _start_recording(self):
+    async def _start_recording(self):
         try:
             self.action_listener.pause()
-            #self.notify_sound()
+ 
             if self.state != AssistantState.IDLE:
                 return
             self.state = AssistantState.RECORDING
@@ -64,12 +67,21 @@ class Assistant:
             logger.log(AppMessage(content="Start recording"))
             # let's give a name to the output file with a timestamp to avoid overwriting
             output_filename = f"recording_{int(time.time())}.wav"
-            #self.recording_thread = threading.Thread(target=self.audio_recorder.record, args=(output_filename,))
-            #self.recording_thread.start()
+
             ended_record = self.audio_recorder.record(output_filename)
             print(f"ended_record: {ended_record}")
-            #self.notify_sound()
-            self._stop_recording(ended_record)
+
+            ### REAL TIME ENGINE
+            if self.enable_real_time:
+                
+                self.state = AssistantState.THINKING
+                response = await self.real_time_engine.start(ended_record)
+                sanitized_text = response.encode("latin-1", errors="ignore").decode('latin-1')
+                self.context.running_conversation.new_assistant_message(sanitized_text)
+                print("Done")
+                self.state = AssistantState.IDLE
+            else:
+                self._stop_recording(ended_record)
         except Exception as e:
             logger.log(ErrorMessage(content=f"_start_recording: {e}"))
             raise Exception(f"_start_recording: {e}")

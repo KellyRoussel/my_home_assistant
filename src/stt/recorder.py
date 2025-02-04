@@ -1,3 +1,4 @@
+import base64
 import sounddevice as sd
 import numpy as np
 import time
@@ -51,7 +52,7 @@ class Recorder:
     def start_recording(self, output_filename: str):
         try:
             self.is_recording = True
-            self.running_record = Record(output_filename)
+            self.running_record = Record(output_filename, self.FORMAT)
             self.running_record.stream = sd.InputStream(
                 samplerate=self.RATE,
                 channels=self.CHANNELS,

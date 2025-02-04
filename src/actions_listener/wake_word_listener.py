@@ -38,8 +38,8 @@ class WakeWordListener:
                             if not self._wake_word_is_detected:
                                 self._wake_word_is_detected = True
                                 logger.log(AppMessage(content=f"Wakeword detected with score: {round(scores[-1],2)}"))
-                                #print(f"Wakeword detected with score: {round(scores[-1],2)}")
-                                self._detect_callback()
+                                print(f"===> Wakeword detected with score: {round(scores[-1],2)}")
+                                await self._detect_callback()
                         else:
                             self._wake_word_is_detected = False
                     if len(self.oww_model.prediction_buffer) > self.MAX_BUFFER_SIZE:
