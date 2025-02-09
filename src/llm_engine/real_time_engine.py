@@ -46,6 +46,9 @@ class RealTimeEngine:
             self.loop = None  # Store the event loop
             self.timeout_reached = False
 
+            self.response_done_received = False
+            self.user_transcript_received = False
+
 
         except Exception as e:
             logger.log(ErrorMessage(content=f"{self.__class__.__name__} : __init__: {e}"))
@@ -173,16 +176,21 @@ class RealTimeEngine:
                 elif event.type == "conversation.item.input_audio_transcription.completed":
                     #print("Input audio transcription completed")
                     print(f"User Transcript: {event.transcript}")
+                    self.user_transcript_received = True
+                    if self.response_done_received:
+                        await self._handle_response_done()
+                        return response
                 elif event.type == "response.audio_transcript.done":
                     response = event.transcript
                 elif event.type == "response.audio.delta":
                     await self.stream_audio(event.delta)
                 elif event.type == "response.done":
                     print("Response done")
-                    print(response)
-                    self.stop_event.set()  # Signal to stop recording
-                    await self._handle_response_done()
-                    return response
+                    self.response_done_received = True
+                    if self.user_transcript_received:
+                        await self._handle_response_done()
+                        return response
+                    
                 #else:
                  #   print(event.type)
         except Exception as e:
