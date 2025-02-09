@@ -51,6 +51,18 @@ class RealTimeEngine:
             logger.log(ErrorMessage(content=f"{self.__class__.__name__} : __init__: {e}"))
             raise Exception(f"{self.__class__.__name__} : __init__: {e}")
         
+    def _reset(self):
+        """Reset the state of the engine"""
+        self.stop_event.clear()
+        self.is_first_chunk = True
+        self.stream_start_time = None
+        self.total_audio_duration = 0
+        self.recording_start_time = None
+        self.timeout_reached = False
+        self.audio_queue = queue.Queue()
+        self.is_processing = True
+        self.event_processing_task = None
+        self.audio_processing_task = None
 
     async def convert_audio_format(self, audio_base64: str) -> str:
         """Convert audio from input format to OpenAI API format"""
@@ -143,7 +155,7 @@ class RealTimeEngine:
                     await self.audio_processing_task
                 print("Audio processing task done")
                 await self.cleanup_player()
-                self.connection = None
+                self._reset()
                 return response
 
     async def process_events(self, connection):
@@ -167,7 +179,7 @@ class RealTimeEngine:
                     await self.stream_audio(event.delta)
                 elif event.type == "response.done":
                     print("Response done")
-                    print(event.response)
+                    print(response)
                     self.stop_event.set()  # Signal to stop recording
                     await self._handle_response_done()
                     return response
