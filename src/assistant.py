@@ -42,7 +42,10 @@ class Assistant:
             self.speaker = OpenaiSpeaker()
             #self.speaker = ElevenLabsSpeaker()
             #self.speaker = DeepgramSpeaker()
-            self.action_listener.set_detection_callback(self._start_recording)
+            if self.enable_real_time:
+                self.action_listener.set_detection_callback(self._real_time_listening)
+            else:
+                self.action_listener.set_detection_callback(self._start_recording)
             #self.action_listener.set_release_callback(self._stop_recording)
             self.context = AssistantContext()
             self.state = AssistantState.OFF
@@ -55,6 +58,20 @@ class Assistant:
         # Start the process and wait for it to finish
         subprocess.run(player_command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
+    async def _real_time_listening(self):
+        try:
+            self.action_listener.pause()
+            self.state = AssistantState.THINKING
+            response = await self.real_time_engine.start()
+            sanitized_text = response.encode("latin-1", errors="ignore").decode('latin-1')
+            self.context.running_conversation.new_assistant_message(sanitized_text)
+            print("Done")
+            self.state = AssistantState.IDLE
+            self.action_listener.resume()
+        except Exception as e:
+            logger.log(ErrorMessage(content=f"_real_time_listening: {e}"))
+            raise Exception(f"_real_time_listening: {e}")
+            
 
     async def _start_recording(self):
         try:
@@ -80,6 +97,7 @@ class Assistant:
                 self.context.running_conversation.new_assistant_message(sanitized_text)
                 print("Done")
                 self.state = AssistantState.IDLE
+                self.action_listener.resume()
             else:
                 self._stop_recording(ended_record)
         except Exception as e:

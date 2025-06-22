@@ -5,6 +5,7 @@ from openwakeword.model import Model
 import asyncio
 class WakeWordListener:
     MAX_BUFFER_SIZE = 1000
+    #SILENCE_THRESHOLD = 500
     def __init__(self):
         self._detect_callback = None
         self._wake_word_is_detected = False
@@ -12,7 +13,10 @@ class WakeWordListener:
         self._paused = False
         self.audio = pyaudio.PyAudio()
         # Load the wake word model
-        self.oww_model = Model(wakeword_models=["./actions_listener/hey_jarvis_v0.1.tflite"], inference_framework="tflite")
+        self.oww_model = Model(wakeword_models=["./actions_listener/hey_jarvis_v0.1.tflite"], 
+                               enable_speex_noise_suppression=True,
+                               vad_threshold=0.8,
+                               inference_framework="tflite")
         self.mic_stream = None
     
     
@@ -26,6 +30,11 @@ class WakeWordListener:
                 try:
                     # Capture audio
                     audio_data = np.frombuffer(self.mic_stream.read(1280), dtype=np.int16)
+
+                   # rms = np.sqrt(np.mean(audio_data.astype(np.float32) ** 2))
+                    #print(f"--- RMS: {rms}")
+                    #if rms < self.SILENCE_THRESHOLD:
+                     #   continue  # Ignore ce buffer, trop silencieux
 
                     # Predict using the model
                     prediction = self.oww_model.predict(audio_data)

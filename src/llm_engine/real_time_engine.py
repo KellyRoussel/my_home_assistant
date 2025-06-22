@@ -66,6 +66,8 @@ class RealTimeEngine:
         self.is_processing = True
         self.event_processing_task = None
         self.audio_processing_task = None
+        self.response_done_received = False
+        self.user_transcript_received = False
 
     async def convert_audio_format(self, audio_base64: str) -> str:
         """Convert audio from input format to OpenAI API format"""
@@ -145,7 +147,7 @@ class RealTimeEngine:
                 self.audio_processing_task = asyncio.create_task(self.process_audio_queue())
                 
                 response = await self.event_processing_task
-                print("Start is over")
+                print(f"Start is over - response: {response}")
                 
             except Exception as e:
                 print(f"Error in main loop: {e}")
@@ -158,7 +160,9 @@ class RealTimeEngine:
                     await self.audio_processing_task
                 print("Audio processing task done")
                 await self.cleanup_player()
+                print("Cleaning up player...")
                 self._reset()
+                print("Reset done")
                 return response
 
     async def process_events(self, connection):
