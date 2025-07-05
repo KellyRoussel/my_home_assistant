@@ -16,7 +16,9 @@ class WakeWordListener:
         self.oww_model = Model(wakeword_models=["./actions_listener/hey_jarvis_v0.1.tflite"], 
                                enable_speex_noise_suppression=True,
                                vad_threshold=0.8,
-                               inference_framework="tflite")
+                               inference_framework="tflite",
+                               custom_verifier_models={"hey_jarvis_v0.1": "./actions_listener/hey_jarvis_retrained.pkl"},
+                                custom_verifier_threshold=0.9) # the threshold score required to invoke the verifier model)
         self.mic_stream = None
     
     
@@ -42,8 +44,8 @@ class WakeWordListener:
                     # Check if any model detected the wakeword
                     for mdl in self.oww_model.prediction_buffer.keys():
                         scores = list(self.oww_model.prediction_buffer[mdl])
-                        #print(round(scores[-1],2))
-                        if scores[-1] > 0.9:  # Threshold for detection
+                        print(round(scores[-1],2))
+                        if scores[-1] > 0.8:  # Threshold for detection
                             if not self._wake_word_is_detected:
                                 self._wake_word_is_detected = True
                                 logger.log(AppMessage(content=f"Wakeword detected with score: {round(scores[-1],2)}"))

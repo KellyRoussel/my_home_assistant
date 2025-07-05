@@ -1,6 +1,7 @@
 import asyncio
 import base64
 from datetime import datetime
+import json
 import os
 import queue
 import subprocess
@@ -8,6 +9,7 @@ import time
 import numpy as np
 from openai import AsyncOpenAI
 from session.assistant_context import Conversation
+from session.tool_call import ToolCall
 from stt.record import Record
 from tools.tool import Tool
 from logger import AppMessage, logger, ErrorMessage
@@ -135,6 +137,10 @@ class RealTimeEngine:
                     "silence_duration_ms": 1000,
                     "create_response": True
                 },
+                "tools": [tool.json_definition_flatten for  tool in self.tools],
+                "tool_choice": "auto",
+                "speed": 1.25
+                #"temperature": 0.8,
             })
 
             try:
@@ -188,12 +194,38 @@ class RealTimeEngine:
                     response = event.transcript
                 elif event.type == "response.audio.delta":
                     await self.stream_audio(event.delta)
+               # elif event.type == "response.function_call_arguments.delta":
+               #     print(f"Function call arguments delta: {event.delta}")
+                #elif event.type == "response.function_call_arguments.done":
+                #    print(f"==> Function call arguments done: {event.arguments}")
+                        
                 elif event.type == "response.done":
                     print("Response done")
-                    self.response_done_received = True
-                    if self.user_transcript_received:
-                        await self._handle_response_done()
-                        return response
+                    print(event.response.output[0].type)
+                    if(event.response.output[0].type == "function_call"):
+                        print(f"Arguments: {event.response.output[0].arguments} - type: {type(event.response.output[0].arguments)}")
+                        decoded_arguments = json.loads(event.response.output[0].arguments)
+                        tool_call = ToolCall(
+                            tool_call_id=event.response.output[0].call_id,
+                            function_name=event.response.output[0].name,
+                            arguments=decoded_arguments
+                        )
+                        tool_result = tool_call.result
+                        print(f"Tool result: {tool_result}")
+                        await self.connection.conversation.item.create(
+                            item={
+                                "call_id": tool_call.tool_call_id,
+                                "type": "function_call_output",
+                                "output": tool_result
+                            }
+                        )
+                        await self.connection.response.create()
+                    elif(event.response.output[0].type == "message"):
+
+                        self.response_done_received = True
+                        if self.user_transcript_received:
+                            await self._handle_response_done()
+                            return response
                     
                 #else:
                  #   print(event.type)
@@ -396,3 +428,5 @@ class RealTimeEngine:
         except Exception as e:
             logger.log(ErrorMessage(content=f"{self.__class__.__name__} : stop_recording: {e}"))
             raise Exception(f"{self.__class__.__name__} : stop_recording: {e}")
+        
+

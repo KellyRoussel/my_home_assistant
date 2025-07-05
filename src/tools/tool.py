@@ -35,6 +35,21 @@ class Tool(ABC):
                 }
             }
         }
+    
+    @property
+    def json_definition_flatten(self):
+        return {
+            "type": "function",
+                "name": self.tool_name,
+                "description": self.description,
+                "parameters": {
+                    "type": "object",
+                    "properties":
+                        {p.name: p.json_definition for p in self.parameters},
+                    "required": [p.name for p in self.parameters]
+                }
+            
+        }
 
     @abstractmethod
     def execute(self, **kwargs):
