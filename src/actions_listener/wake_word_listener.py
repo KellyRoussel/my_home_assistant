@@ -33,7 +33,7 @@ class WakeWordListener:
                     # Capture audio
                     audio_data = np.frombuffer(self.mic_stream.read(1280), dtype=np.int16)
 
-                   # rms = np.sqrt(np.mean(audio_data.astype(np.float32) ** 2))
+                    rms = np.sqrt(np.mean(audio_data.astype(np.float32) ** 2))
                     #print(f"--- RMS: {rms}")
                     #if rms < self.SILENCE_THRESHOLD:
                      #   continue  # Ignore ce buffer, trop silencieux
@@ -44,12 +44,12 @@ class WakeWordListener:
                     # Check if any model detected the wakeword
                     for mdl in self.oww_model.prediction_buffer.keys():
                         scores = list(self.oww_model.prediction_buffer[mdl])
-                        print(round(scores[-1],2))
+                        #print(round(scores[-1],2))
                         if scores[-1] > 0.8:  # Threshold for detection
                             if not self._wake_word_is_detected:
                                 self._wake_word_is_detected = True
-                                logger.log(AppMessage(content=f"Wakeword detected with score: {round(scores[-1],2)}"))
-                                print(f"===> Wakeword detected with score: {round(scores[-1],2)}")
+                                logger.log(AppMessage(content=f"Wakeword detected with score: {round(scores[-1],2)} - RMS: {round(rms,2)}"))
+                                print(f"===> Wakeword detected with score: {round(scores[-1],2)} - RMS: {round(rms,2)}")
                                 await self._detect_callback()
                         else:
                             self._wake_word_is_detected = False

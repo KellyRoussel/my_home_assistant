@@ -157,6 +157,7 @@ class RealTimeEngine:
                 
             except Exception as e:
                 print(f"Error in main loop: {e}")
+                logger.log(ErrorMessage(content=f"{self.__class__.__name__} : start: {e}"))
             finally:
                 print("Finally")
                 self.stop_event.set()
@@ -231,6 +232,7 @@ class RealTimeEngine:
                  #   print(event.type)
         except Exception as e:
             print(f"Error in event processing: {e}")
+            logger.log(ErrorMessage(content=f"{self.__class__.__name__} : process_events: {e}"))
             raise
 
     async def _handle_response_done(self):

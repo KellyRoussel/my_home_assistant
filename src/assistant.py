@@ -63,14 +63,17 @@ class Assistant:
             self.action_listener.pause()
             self.state = AssistantState.THINKING
             response = await self.real_time_engine.start()
-            sanitized_text = response.encode("latin-1", errors="ignore").decode('latin-1')
-            self.context.running_conversation.new_assistant_message(sanitized_text)
+            if response:
+                sanitized_text = response.encode("latin-1", errors="ignore").decode('latin-1')
+                self.context.running_conversation.new_assistant_message(sanitized_text)
             print("Done")
-            self.state = AssistantState.IDLE
-            self.action_listener.resume()
         except Exception as e:
             logger.log(ErrorMessage(content=f"_real_time_listening: {e}"))
-            raise Exception(f"_real_time_listening: {e}")
+           # raise Exception(f"_real_time_listening: {e}")
+        finally:
+            self.state = AssistantState.IDLE
+            self.action_listener.resume()
+
             
 
     async def _start_recording(self):
