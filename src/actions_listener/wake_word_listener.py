@@ -73,7 +73,14 @@ class WakeWordListener:
     def resume(self):
         self._wake_word_is_detected = False
         #self.oww_model.reset()
-        self.oww_model = Model(wakeword_models=["./actions_listener/hey_jarvis_v0.1.tflite"], inference_framework="tflite")
+        self.oww_model = Model(
+            wakeword_models=["./actions_listener/hey_jarvis_v0.1.tflite"], 
+            enable_speex_noise_suppression=True,
+                               vad_threshold=0.8,
+                               inference_framework="tflite",
+                               custom_verifier_models={"hey_jarvis_v0.1": "./actions_listener/hey_jarvis_retrained.pkl"},
+                                custom_verifier_threshold=0.9
+            )
         self.mic_stream = self.audio.open(format=pyaudio.paInt16, channels=1, rate=16000, input=True, frames_per_buffer=1280)
         self._paused = False
 
