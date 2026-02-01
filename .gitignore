@@ -4,3 +4,10 @@ src/tools/todo_list/secret_token.json
 # Ignore pycache directories
 __pycache__/
 *.pyc
+workdir/
+venv/
+docs/
+secret_token.json
+todo_list.txt
+.cache
+logs.json
