@@ -1,4 +1,4 @@
-openai
+openai==2.16.0
 openai[realtime]
 python-dotenv
 pyaudio

@@ -1,8 +1,11 @@
 import numpy as np
 import pyaudio
+from pathlib import Path
 from logger import logger, AppMessage, ErrorMessage
 from openwakeword.model import Model
 import asyncio
+
+_SCRIPT_DIR = Path(__file__).parent
 class WakeWordListener:
     MAX_BUFFER_SIZE = 1000
     #SILENCE_THRESHOLD = 500
@@ -13,12 +16,12 @@ class WakeWordListener:
         self._paused = False
         self.audio = pyaudio.PyAudio()
         # Load the wake word model
-        self.oww_model = Model(wakeword_models=["./actions_listener/hey_jarvis_v0.1.tflite"], 
+        self.oww_model = Model(wakeword_models=[str(_SCRIPT_DIR / "hey_jarvis_v0.1.tflite")],
                                enable_speex_noise_suppression=True,
                                vad_threshold=0.8,
                                inference_framework="tflite",
-                               custom_verifier_models={"hey_jarvis_v0.1": "./actions_listener/hey_jarvis_retrained.pkl"},
-                                custom_verifier_threshold=0.9) # the threshold score required to invoke the verifier model)
+                               custom_verifier_models={"hey_jarvis_v0.1": str(_SCRIPT_DIR / "hey_jarvis_retrained.pkl")},
+                                custom_verifier_threshold=0.9)
         self.mic_stream = None
     
     
@@ -74,12 +77,12 @@ class WakeWordListener:
         self._wake_word_is_detected = False
         #self.oww_model.reset()
         self.oww_model = Model(
-            wakeword_models=["./actions_listener/hey_jarvis_v0.1.tflite"], 
+            wakeword_models=[str(_SCRIPT_DIR / "hey_jarvis_v0.1.tflite")],
             enable_speex_noise_suppression=True,
-                               vad_threshold=0.8,
-                               inference_framework="tflite",
-                               custom_verifier_models={"hey_jarvis_v0.1": "./actions_listener/hey_jarvis_retrained.pkl"},
-                                custom_verifier_threshold=0.9
+            vad_threshold=0.8,
+            inference_framework="tflite",
+            custom_verifier_models={"hey_jarvis_v0.1": str(_SCRIPT_DIR / "hey_jarvis_retrained.pkl")},
+            custom_verifier_threshold=0.9
             )
         self.mic_stream = self.audio.open(format=pyaudio.paInt16, channels=1, rate=16000, input=True, frames_per_buffer=1280)
         self._paused = False

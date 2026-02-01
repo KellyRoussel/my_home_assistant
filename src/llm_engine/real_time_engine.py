@@ -3,10 +3,13 @@ import base64
 from datetime import datetime
 import json
 import os
+from pathlib import Path
 import queue
 import subprocess
 import time
 import numpy as np
+
+_SCRIPT_DIR = Path(__file__).parent
 from openai import AsyncOpenAI
 from session.assistant_context import Conversation
 from session.tool_call import ToolCall
@@ -121,26 +124,32 @@ class RealTimeEngine:
         response = None
         self.loop = asyncio.get_running_loop()
         
-        async with self._client.beta.realtime.connect(model="gpt-4o-realtime-preview") as connection:
+        async with self._client.realtime.connect(model="gpt-realtime-2025-08-28") as connection:
             self.connection = connection
             await connection.session.update(session={
-                'modalities': ['audio', 'text'],
-                "voice": "echo",
-                "input_audio_transcription": {
-                    "model": "whisper-1"
+                'type': 'realtime',
+                'output_modalities': ['audio'],
+                "audio": {
+                    "input": {
+                        "format": {"type": "audio/pcm", "rate": 24000},
+                        "transcription": {
+                            "model": "whisper-1"
+                        },
+                        "turn_detection": {
+                            "type": "server_vad",
+                            "threshold": 0.5,
+                            "prefix_padding_ms": 500,
+                            "silence_duration_ms": 1000,
+                            "create_response": True
+                        }
+                    },
+                    "output": {
+                        "voice": "echo",
+                        "speed": 1.25
+                    }
                 },
-                "input_audio_format": "pcm16",
-                "turn_detection": {
-                    "type": "server_vad",
-                    "threshold": 0.5,
-                    "prefix_padding_ms": 500,
-                    "silence_duration_ms": 1000,
-                    "create_response": True
-                },
-                "tools": [tool.json_definition_flatten for  tool in self.tools],
-                "tool_choice": "auto",
-                "speed": 1.25
-                #"temperature": 0.8,
+                "tools": [tool.json_definition_flatten for tool in self.tools],
+                "tool_choice": "auto"
             })
 
             try:
@@ -193,7 +202,7 @@ class RealTimeEngine:
                         return response
                 elif event.type == "response.audio_transcript.done":
                     response = event.transcript
-                elif event.type == "response.audio.delta":
+                elif event.type == "response.output_audio.delta":
                     await self.stream_audio(event.delta)
                # elif event.type == "response.function_call_arguments.delta":
                #     print(f"Function call arguments delta: {event.delta}")
@@ -409,7 +418,7 @@ class RealTimeEngine:
     def notify(self, retries=1):
         try:
             print("Playing notification sound...")
-            player_command = ["ffplay", "-nodisp", "-autoexit", "./listening.mp3"]
+            player_command = ["ffplay", "-nodisp", "-autoexit", str(_SCRIPT_DIR.parent / "listening.mp3")]
             start_time = time.perf_counter()
             subprocess.run(player_command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=1.5)
             end_time = time.perf_counter()
