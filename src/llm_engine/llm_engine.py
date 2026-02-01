@@ -10,7 +10,7 @@ class LLMEngine:
         try:
             self._client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
             self._model = "gpt-4o"
-            self._client = Groq()
+            #self._client = Groq()
             #self._model = "llama-3.1-70b-versatile" #"llama3-70b-8192"
             self.tools = tools if tools is not None else []
         except Exception as e:
