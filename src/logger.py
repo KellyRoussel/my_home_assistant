@@ -1,43 +1,33 @@
-import datetime
-from pydantic import BaseModel
 import json
-from datetime import datetime
+from config import Config
+from models.logs import LogMessage, AppMessage, ErrorMessage, ConversationMessage
 
-class Message(BaseModel):
-    role: str
-    content: str
-    timestamp: str = datetime.now().isoformat()
+# Re-export for backwards compatibility
+__all__ = ["Logger", "logger", "LogMessage", "AppMessage", "ErrorMessage", "ConversationMessage"]
 
-class AppMessage(Message):
-    role: str = "app"
-
-class ErrorMessage(Message):
-    role: str = "error"
-
-class ConversationMessage(Message):
-    ...
 
 class Logger:
 
+    def __init__(self, log_file: str = None):
+        self._log_file = str(log_file or Config.LOGS_FILE)
+
     def get_json_file(self) -> list:
         try:
-            with open('./logs.json', 'r') as f:
+            with open(self._log_file, 'r') as f:
                 return json.load(f)
-        except:
+        except (FileNotFoundError, json.JSONDecodeError):
             return []
 
-    def log(self, message: Message):
+    def log(self, message: LogMessage):
         logs = self.get_json_file()
-
-        # add message to logs
         logs.append(message.model_dump())
 
-        # save logs.json
-        with open('./logs.json', 'w') as f:
+        with open(self._log_file, 'w') as f:
             json.dump(logs, f, indent=4)
 
     def reset(self):
-        with open('./logs.json', 'w') as f:
+        with open(self._log_file, 'w') as f:
             json.dump([], f)
+
 
 logger = Logger()

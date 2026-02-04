@@ -12,7 +12,7 @@ import numpy as np
 _SCRIPT_DIR = Path(__file__).parent
 from openai import AsyncOpenAI
 from session.assistant_context import Conversation
-from session.tool_call import ToolCall
+from models.tools import ToolCall
 from stt.record import Record
 from tools.tool import Tool
 from logger import AppMessage, logger, ErrorMessage

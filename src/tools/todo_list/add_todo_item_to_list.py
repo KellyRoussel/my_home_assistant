@@ -1,6 +1,6 @@
 from .entities.todo_list import TodoList
 from .todo_tool import TodoTool
-from ..tool_parameter import ToolParameter
+from models.tools import ToolParameter
 from logger import logger, ErrorMessage
 
 class AddTodoItemToList(TodoTool):

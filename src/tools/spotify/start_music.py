@@ -1,7 +1,7 @@
 import os
 
 from .spotify_tool import SpotifyTool
-from ..tool_parameter import ToolParameter
+from models.tools import ToolParameter
 
 
 class StartMusic(SpotifyTool):

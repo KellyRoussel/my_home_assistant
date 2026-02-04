@@ -3,7 +3,7 @@ from datetime import date
 from openmeteo_sdk import WeatherApiResponse
 from logger import logger, ErrorMessage
 from ..tool import Tool
-from ..tool_parameter import ToolParameter
+from models.tools import ToolParameter
 import openmeteo_requests
 import pandas as pd
 from geopy.geocoders import Nominatim

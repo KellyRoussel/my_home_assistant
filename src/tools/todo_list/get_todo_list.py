@@ -1,7 +1,7 @@
 from .entities.items import TodoItem
 from .entities.todo_list import TodoList
 from .todo_tool import TodoTool
-from ..tool_parameter import ToolParameter
+from models.tools import ToolParameter
 
 
 class GetTodoListTool(TodoTool):
