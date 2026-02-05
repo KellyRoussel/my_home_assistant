@@ -79,7 +79,7 @@ class CheckWeather(Tool):
 
 			return (f"Here is a dataframe of the hourly weather in {city} on {date}:\n"
 					f"Here are some definitions:"
-					f"- temperature_2m: Air temperature at 2 meters above ground in °C"
+					f"- temperature_2m: Air temperature at 2 meters above ground in Â°C"
 					f"- precipitation_probability: Probability of precipitation in %"
 					f"- precipitation: Precipitation in mm"
 					f"- wind_speed_10m: Wind speed at 10 meters above ground in km/h\n"
