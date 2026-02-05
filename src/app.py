@@ -16,7 +16,7 @@ assistant = Assistant()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     print("Starting")
-    await run_assistant()
+    assistant.start()
     yield
 
 
