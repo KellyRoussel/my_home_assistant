@@ -125,6 +125,7 @@ class RealTimeEngine:
         self.loop = asyncio.get_running_loop()
         
         async with self._client.realtime.connect(model="gpt-realtime-2025-08-28") as connection:
+            logger.log(AppMessage(content="Connected to OpenAI Realtime API"))
             self.connection = connection
             await connection.session.update(session={
                 'type': 'realtime',
@@ -153,16 +154,16 @@ class RealTimeEngine:
             })
 
             try:
-                print("About to start recording...")
+                logger.log(AppMessage(content="About to start recording..."))
                 self.notify()
                 await self.start_recording()
-                print("Recording started, now starting event and audio processing...")
+                logger.log(AppMessage(content="Recording started, now starting event and audio processing..."))
 
                 self.event_processing_task = asyncio.create_task(self.process_events(connection))
                 self.audio_processing_task = asyncio.create_task(self.process_audio_queue())
                 
                 response = await self.event_processing_task
-                print(f"Start is over - response: {response}")
+                logger.log(AppMessage(content=f"Start is over - response: {response}"))
                 
             except Exception as e:
                 print(f"Error in main loop: {e}")

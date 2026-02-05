@@ -16,7 +16,7 @@ class GetTodoListTool(TodoTool):
 
     @property
     def parameters(self) -> list[ToolParameter]:
-        return [ToolParameter("list_name", "The name of the list", "string", required=True, enum=['courses'])]
+        return [ToolParameter(name="list_name", description="The name of the list", type="string", required=True, enum=['courses'])]
 
     def execute(self, name: str) -> list[TodoItem]:
         try:

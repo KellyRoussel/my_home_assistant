@@ -16,10 +16,8 @@ assistant = Assistant()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     print("Starting")
-    assistant.start()
+    asyncio.create_task(assistant.start())
     yield
-    assistant.stop()
-    task.cancel()
 
 
 app = FastAPI(lifespan=lifespan)
@@ -33,11 +31,8 @@ async def serve_json():
 async def restart():
     assistant.stop()
     logger.reset()
-    await assistant.start()
+    asyncio.create_task(assistant.start())
     return {"message": "Assistant restarted successfully"}
-
-async def run_assistant():
-    await assistant.start()
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
