@@ -12,6 +12,8 @@ class EventHandler:
         self,
         on_audio_delta: Callable[[str], Awaitable[None]],
         on_audio_committed: Callable[[], None],
+        on_user_transcript: Optional[Callable[[str], None]] = None,
+        on_assistant_transcript: Optional[Callable[[str], None]] = None,
     ):
         """
         Initialize the event handler.
@@ -19,11 +21,21 @@ class EventHandler:
         Args:
             on_audio_delta: Async callback for audio chunks (base64 string).
             on_audio_committed: Callback when audio buffer is committed.
+            on_user_transcript: Optional callback when user transcript is available.
+            on_assistant_transcript: Optional callback when assistant transcript is available.
         """
         self._on_audio_delta = on_audio_delta
         self._on_audio_committed = on_audio_committed
+        self._on_user_transcript = on_user_transcript
+        self._on_assistant_transcript = on_assistant_transcript
         self._response_done_received = False
         self._user_transcript_received = False
+        self._user_transcript: Optional[str] = None
+
+    @property
+    def user_transcript(self) -> Optional[str]:
+        """The user's transcribed speech, available after processing."""
+        return self._user_transcript
 
     async def process_events(self, connection) -> Optional[str]:
         """
@@ -46,13 +58,18 @@ class EventHandler:
 
                 elif event.type == "conversation.item.input_audio_transcription.completed":
                     print(f"User Transcript: {event.transcript}")
+                    self._user_transcript = event.transcript
                     self._user_transcript_received = True
+                    if self._on_user_transcript:
+                        self._on_user_transcript(event.transcript)
                     if self._response_done_received:
                         return response
 
-                elif event.type == "response.audio_transcript.done":
+                elif event.type == "response.output_audio_transcript.done":
                     response = event.transcript
                     print(f"Assistant Transcript: {response}")
+                    if self._on_assistant_transcript:
+                        self._on_assistant_transcript(response)
 
                 elif event.type == "response.output_audio.delta":
                     await self._on_audio_delta(event.delta)

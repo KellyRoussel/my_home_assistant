@@ -29,10 +29,12 @@ class Assistant:
         try:
             self.action_listener.pause()
             self.state = AssistantState.THINKING
-            response = await self.real_time_engine.start()
-            if response:
-                sanitized_text = response.encode("latin-1", errors="ignore").decode('latin-1')
-                self.context.running_conversation.new_assistant_message(sanitized_text)
+            await self.real_time_engine.start(
+                on_user_transcript=self.context.running_conversation.new_user_message,
+                on_assistant_transcript=lambda text: self.context.running_conversation.new_assistant_message(
+                    text.encode("latin-1", errors="ignore").decode("latin-1")
+                ),
+            )
             print("Done")
         except Exception as e:
             logger.log(ErrorMessage(content=f"_real_time_listening: {e}"))
@@ -44,8 +46,8 @@ class Assistant:
     async def start(self):
         try:
             self.state = AssistantState.IDLE
-            print("Assistant started. Listening for keyboard events...")
-            logger.log(AppMessage(content="Start listening for events"))
+            print("Assistant started. Listening for wakeword...")
+            logger.log(AppMessage(content="Start listening for wakeword"))
             await self.action_listener.start_listening()
         except Exception as e:
             logger.log(ErrorMessage(content=f"{self.__class__.__name__} : start: {e}"))

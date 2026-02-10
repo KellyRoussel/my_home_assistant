@@ -3,13 +3,13 @@ import queue
 import subprocess
 import time
 from pathlib import Path
-from typing import Optional
+from typing import Callable, Optional
 
 from tools.tool import Tool
 from llm_engine.audio import AudioRecorder, AudioPlayer
 from llm_engine.realtime_session import RealtimeSession
 from llm_engine.event_handler import EventHandler
-from llm_engine.models import AudioConfig, SessionConfig
+from llm_engine.models import AudioConfig, ConversationResult, SessionConfig
 from logger import logger, AppMessage, ErrorMessage
 
 _SCRIPT_DIR = Path(__file__).parent
@@ -52,13 +52,21 @@ class RealTimeEngine:
         self._event_handler = None
         self._is_processing = False
 
-    async def start(self) -> Optional[str]:
+    async def start(
+        self,
+        on_user_transcript: Optional[Callable[[str], None]] = None,
+        on_assistant_transcript: Optional[Callable[[str], None]] = None,
+    ) -> Optional[ConversationResult]:
         """
         Start a real-time voice interaction session.
 
-        Returns the assistant's transcript response.
+        Args:
+            on_user_transcript: Optional callback invoked immediately when the user transcript is available.
+            on_assistant_transcript: Optional callback invoked immediately when the assistant transcript is available.
+
+        Returns a ConversationResult with user and assistant transcripts.
         """
-        response = None
+        result = None
         audio_task = None
         self._reset()
 
@@ -74,6 +82,8 @@ class RealTimeEngine:
         self._event_handler = EventHandler(
             on_audio_delta=self._player.stream_chunk,
             on_audio_committed=lambda: self._stop_event.set(),
+            on_user_transcript=on_user_transcript,
+            on_assistant_transcript=on_assistant_transcript,
         )
 
         try:
@@ -90,8 +100,11 @@ class RealTimeEngine:
                 event_task = asyncio.create_task(self._event_handler.process_events(connection))
                 audio_task = asyncio.create_task(self._process_audio_queue())
 
-                response = await event_task
-                logger.log(AppMessage(content=f"Start is over - response: {response}"))
+                assistant_transcript = await event_task
+                result = ConversationResult(
+                    user_transcript=self._event_handler.user_transcript,
+                    assistant_transcript=assistant_transcript,
+                )
 
         except Exception as e:
             print(f"Error in main loop: {e}")
@@ -111,7 +124,7 @@ class RealTimeEngine:
             self._reset()
             print("Reset done")
 
-        return response
+        return result
 
     async def _handle_response_done(self) -> None:
         """Wait for audio playback to complete and cleanup."""
