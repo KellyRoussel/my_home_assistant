@@ -57,7 +57,6 @@ class EventHandler:
                     self._on_audio_committed()
 
                 elif event.type == "conversation.item.input_audio_transcription.completed":
-                    print(f"User Transcript: {event.transcript}")
                     self._user_transcript = event.transcript
                     self._user_transcript_received = True
                     if self._on_user_transcript:
@@ -67,7 +66,6 @@ class EventHandler:
 
                 elif event.type == "response.output_audio_transcript.done":
                     response = event.transcript
-                    print(f"Assistant Transcript: {response}")
                     if self._on_assistant_transcript:
                         self._on_assistant_transcript(response)
 

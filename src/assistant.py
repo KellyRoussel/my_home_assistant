@@ -29,10 +29,13 @@ class Assistant:
         try:
             self.action_listener.pause()
             self.state = AssistantState.THINKING
+            sanitize = lambda text: text.encode("latin-1", errors="ignore").decode("latin-1")
             await self.real_time_engine.start(
-                on_user_transcript=self.context.running_conversation.new_user_message,
+                on_user_transcript=lambda text: self.context.running_conversation.new_user_message(
+                    sanitize(text)
+                ),
                 on_assistant_transcript=lambda text: self.context.running_conversation.new_assistant_message(
-                    text.encode("latin-1", errors="ignore").decode("latin-1")
+                    sanitize(text)
                 ),
             )
             print("Done")
