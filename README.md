@@ -8,101 +8,91 @@ Welcome to the repository for my Personal AI Home Assistant project. This README
 2. [Hardware](#hardware)
 3. [Software](#software)
 4. [Architecture](#architecture)
-    - [Action Listener](#action-listener)
-    - [Recorder](#recorder)
-    - [Transcriber](#transcriber)
-    - [LLM Engine](#llm-engine)
-    - [Text-to-Speech (TTS)](#text-to-speech-tts)
+    - [Wake Word Listener](#wake-word-listener)
+    - [Real-Time Engine](#real-time-engine)
+    - [Tools](#tools)
     - [Assistant Coordinator](#assistant-coordinator)
 5. [Usage](#usage)
 
 ## Vision
 
-The goal of this project is to create a personal AI assistant that operates on a dedicated, always-on device, such as a Raspberry Pi 4 in my case. The assistant is designed to listen for user commands, process them, and respond appropriately, eventually taking action based on the user's requests.
+The goal of this project is to create a personal AI assistant that operates on a dedicated, always-on device, such as a Raspberry Pi 4 in my case. The assistant listens for a wake word, then engages in a natural voice conversation, and can take actions based on the user's requests.
 
-*This is a personal project I'm pursuing out of sheer enthusiasm. I hope you enjoy following along and maybe find some inspiration or useful tips along the way!
+*This is a personal project I'm pursuing out of sheer enthusiasm. I hope you enjoy following along and maybe find some inspiration or useful tips along the way!*
 
 ## Hardware
 
 - Always-on device: I've been developing on my PC, later running it on Raspberry Pi 4 for personal experience and easy use
 - Microphone
-- Physical Raspberry GPIO button or Bluetooth button or KeyBoard (for Action Listener)
-- Speaker (for Text-to-Speech output)
+- Speaker (for audio output)
 
 ## Software
 
 - The project is in Python 🐍
-- **Speech-To-Text (STT)**: Whisper API used for now
-- **Large Language Model (LLM)**: OpenAI's API or Groq's API implemented for now
-- **Text-To-Speech (TTS)**: DeepGram, ElevenLabs, OpenAI services implemented for now
-
+- **Wake Word Detection**: [OpenWakeWord](https://github.com/dscripka/openWakeWord) with a custom "Hey Jarvis" TFLite model and a retrained scikit-learn verifier
+- **Real-Time Voice Interaction**: [OpenAI Realtime API](https://platform.openai.com/docs/guides/realtime) — a single WebSocket session that handles speech recognition, LLM reasoning, and speech synthesis simultaneously
+- **Weather**: [Open-Meteo](https://open-meteo.com/) (free, no API key required)
+- **Todo list**: Microsoft To Do via OAuth
 
 ## Architecture
 
-### Action Listener
+### Wake Word Listener
 
-The Action Listener captures the user's intention to interact with the assistant. It can be triggered by a physical button, a keyboard key, or a Bluetooth button.
+The `WakeWordListener` continuously monitors the microphone and fires a callback when the wake word "Hey Jarvis" is detected.
 
-- **Keyboard Action Listener:** Detects specific key events (e.g., space bar).
-- **Button Action Listener:** Utilizes Raspberry Pi GPIOs for a wired button.
-- **Bluetooth Action Listener:** Detects button press events via Bluetooth.
+- Uses OpenWakeWord with a TFLite model (`hey_jarvis_v0.1.tflite`) and a custom-trained scikit-learn verifier (`hey_jarvis_retrained.pkl`) for reduced false positives
+- Detection requires both a high per-frame score (> 0.8) and a sliding 3-frame average (> 0.6)
+- Pauses the microphone stream while the assistant is responding, then resumes and reloads the model
 
-> Choose which one to use in `src/assistant.py`
+### Real-Time Engine
 
-### Recorder
+The `RealTimeEngine` is the core of the voice interaction. Once triggered, it opens a bidirectional WebSocket connection to the OpenAI Realtime API and coordinates three sub-components:
 
-The Recorder captures audio input from the microphone. It uses the `sounddevice` package for recording on the Raspberry Pi.
+- **AudioRecorder**: Captures microphone input in real time and streams base64-encoded PCM chunks to the session. Includes a silence timeout to automatically commit the audio buffer when the user stops speaking.
+- **RealtimeSession**: Manages the OpenAI Realtime API connection, session configuration (model, tools, voice), and audio buffer operations.
+- **EventHandler**: Processes server-sent events — streams audio delta chunks to the player as they arrive, collects user and assistant transcripts, and signals when the response is complete.
+- **AudioPlayer**: Plays the streamed audio response in real time using PyAudio.
 
-- **Methods:**
-    - `start_recording()`: Begins the recording session.
-    - `stop_recording()`: Ends the recording session and saves the audio.
-    - `record()`: Continuously captures audio chunks until stopped.
+A notification sound plays as soon as the session is ready to record, giving audible feedback to the user.
 
-### Transcriber
+### Tools
 
-The Transcriber converts recorded audio into text using the OpenAI Whisper API.
+The assistant can call tools during a conversation. Tools are registered in `src/tools/tools_library.py` and passed into the Realtime session config.
 
-- **Methods:**
-    - `transcribe(audio_file)`: Sends the audio file to Whisper API and returns the transcribed text.
+Currently available tools:
 
-### LLM Engine
-
-The LLM Engine generates responses based on the transcribed text. It uses a large language model to produce contextually relevant replies.
-
-- **Methods:**
-    - `generate_response(prompt)`: Sends the prompt to the LLM and returns the generated response.
-  
-> Choose model and API service in `src>llm_engine>llm_engine.py`
-
-### Text-to-Speech (TTS)
-
-The TTS component converts the generated text response into audible speech.
-
-- **Methods:**
-    - `speak(text)`: Sends the text to the TTS service and plays the audio.
-
-> Deepgram, ElevenLabs and OpenAI implemented. Choose the service to use in `src/assistant.py`
+| Tool | Description |
+|------|-------------|
+| `check_weather` | Fetches hourly weather data (temperature, precipitation, wind) for a given city and date using Open-Meteo |
+| `add_todo_item_to_list` | Adds an item to a Microsoft To Do list (currently supports the `shopping` list) |
 
 ### Assistant Coordinator
 
-The Assistant Coordinator manages the overall flow and state transitions of the assistant.
+The `Assistant` class in `src/assistant.py` manages the overall flow:
 
-- **States:**
-    - `OFF`: The assistant is inactive.
-    - `IDLE`: The assistant is ready and waiting for input.
-    - `RECORDING`: The assistant is capturing audio.
-    - `TRANSCRIBING`: The assistant is converting audio to text.
-    - `THINKING`: The assistant is generating a response.
-    - `SPEAKING`: The assistant is delivering the response.
+- **States**: `OFF`, `IDLE`, `THINKING`
+- On wake word detection: pauses the listener, runs the real-time session, then resumes listening
+- Conversation history (user and assistant transcripts) is persisted in the `AssistantContext` across interactions
 
 ## Usage
 
-1. **Start the assistant:**
+1. **Set up environment variables** — create a `.env` file at the project root:
+    ```
+    OPENAI_API_KEY=your_openai_api_key
+    ```
+
+2. **Install dependencies:**
+    ```bash
+    pip install -r requirements.txt
+    ```
+
+3. **Start the assistant:**
     ```bash
     python src/main.py
     ```
 
-2. **Interact with the assistant:**
-    - Press the designated button to start recording.
-    - Speak your command.
-    - Release the button to stop recording and wait for the response.
+4. **Interact with the assistant:**
+    - Say **"Hey Jarvis"** to wake the assistant.
+    - Wait for the notification sound, then speak your request.
+    - The assistant will respond in real time via audio.
+    - It returns to listening mode automatically after responding.
