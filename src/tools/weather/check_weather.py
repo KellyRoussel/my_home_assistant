@@ -3,7 +3,7 @@ from datetime import date
 from openmeteo_sdk import WeatherApiResponse
 from logger import logger, ErrorMessage
 from ..tool import Tool
-from ..tool_parameter import ToolParameter
+from models.tools import ToolParameter
 import openmeteo_requests
 import pandas as pd
 from geopy.geocoders import Nominatim
@@ -24,8 +24,8 @@ class CheckWeather(Tool):
 	@property
 	def parameters(self) -> list[ToolParameter]:
 		return [
-			ToolParameter("city", "The name of the city. If user did not specify a city, it will default to Lyon", "string", required=True),
-			ToolParameter("date", f"The date - format YYYY-MM-DD. Today we are {date.today().strftime('%Y-%m-%d')}", "string", required=True),
+			ToolParameter(name="city", description="The name of the city. If user did not specify a city, it will default to Lyon", type="string", required=True),
+			ToolParameter(name="date", description=f"The date - format YYYY-MM-DD. Today we are {date.today().strftime('%Y-%m-%d')}", type="string", required=True),
 		]
 
 	def _get_coordinates(self, city_name):

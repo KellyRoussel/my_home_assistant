@@ -6,6 +6,7 @@ import requests
 from requests_oauthlib import OAuth2Session
 import os
 
+from config import Config
 from .entities.todo_list import TodoList
 from ..tool import Tool
 
@@ -13,14 +14,15 @@ os.environ['OAUTHLIB_RELAX_TOKEN_SCOPE'] = '1'  # https://github.com/VannTen/oau
 
 
 class TodoTool(Tool, ABC):
-    token_file = './tools/todo_list/secret_token.json'
 
     def __init__(self):
         try:
+            self.token_file = Config.TOKEN_FILE
             self.tenant_id = os.environ["MICROSOFT_TENANT_ID"]
             self.client_id = os.environ["MICROSOFT_CLIENT_ID"]
             self.client_secret = os.environ["MICROSOFT_CLIENT_SECRET"]
-            self.token = json.load(open(self.token_file))
+            with open(self.token_file) as f:
+                self.token = json.load(f)
         except Exception as e:
             raise Exception(f"TodoTool: {e}")
 
@@ -42,7 +44,8 @@ class TodoTool(Tool, ABC):
 
             self.token = oa_sess.refresh_token('https://login.microsoftonline.com/common/oauth2/v2.0/token',
                                                client_id=self.client_id, client_secret=self.client_secret)
-            json.dump(self.token, open(self.token_file, 'w'), indent=4)
+            with open(self.token_file, 'w') as f:
+                json.dump(self.token, f, indent=4)
         except Exception as e:
             raise Exception(f"__refresh_token: {e}")
 

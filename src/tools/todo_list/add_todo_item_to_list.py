@@ -1,6 +1,6 @@
 from .entities.todo_list import TodoList
 from .todo_tool import TodoTool
-from ..tool_parameter import ToolParameter
+from models.tools import ToolParameter
 from logger import logger, ErrorMessage
 
 class AddTodoItemToList(TodoTool):
@@ -15,8 +15,8 @@ class AddTodoItemToList(TodoTool):
 
     @property
     def parameters(self) -> list[ToolParameter]:
-        return [ToolParameter("list_name", "The name of the list", "string", required=True, enum=['shopping']),
-                ToolParameter("item_name", "The name of the item", "string", required=True)]
+        return [ToolParameter(name="list_name", description="The name of the list", type="string", required=True, enum=['shopping']),
+                ToolParameter(name="item_name", description="The name of the item", type="string", required=True)]
 
     def execute(self, list_name: str, item_name: str):
         try:

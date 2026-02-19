@@ -47,12 +47,16 @@ class WakeWordListener:
                     # Check if any model detected the wakeword
                     for mdl in self.oww_model.prediction_buffer.keys():
                         scores = list(self.oww_model.prediction_buffer[mdl])
-                        #print(round(scores[-1],2))
-                        if scores[-1] > 0.8:  # Threshold for detection
+                        sliding_avg = round(np.mean(scores[-3:]), 2)
+                        if scores[-1] > 0.5:
+                            print(round(scores[-1],2), f"avg3: {sliding_avg}")
+                            logger.log(AppMessage(content=f"~~~~\nNo detection, but score: {round(scores[-1],2)} \nsliding_avg: {round(sliding_avg, 2)} \nRMS: {round(rms,2)}\n~~~~"))
+                        #if scores[-1] > 0.8:  # Threshold for detection
+                        if scores[-1] > 0.8 and sliding_avg > 0.6: # Trying something else
                             if not self._wake_word_is_detected:
                                 self._wake_word_is_detected = True
-                                logger.log(AppMessage(content=f"Wakeword detected with score: {round(scores[-1],2)} - RMS: {round(rms,2)}"))
-                                print(f"===> Wakeword detected with score: {round(scores[-1],2)} - RMS: {round(rms,2)}")
+                                logger.log(AppMessage(content=f"Wakeword detected with sliding_avg: {round(sliding_avg, 2)} \nscore: {round(scores[-1],2)} \nRMS: {round(rms,2)}"))
+                               # print(f"===> Wakeword detected with sliding_avg: {round(sliding_avg, 2)} \nscore: {round(scores[-1],2)} \nRMS: {round(rms,2)}")
                                 await self._detect_callback()
                         else:
                             self._wake_word_is_detected = False

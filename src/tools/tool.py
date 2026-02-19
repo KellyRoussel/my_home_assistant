@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from tools.tool_parameter import ToolParameter
+from models.tools import ToolParameter
 
 
 class Tool(ABC):

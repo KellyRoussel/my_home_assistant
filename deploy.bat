@@ -8,7 +8,7 @@ setlocal
 :: Configuration - modify these values
 set PI_USER=kelly
 set PI_HOST=raspberrypi.local
-set PI_DEST=/home/kelly/testing_deployment
+set PI_DEST=/home/kelly/development/home_assistant
 
 :: Get script directory
 set SCRIPT_DIR=%~dp0
