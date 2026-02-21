@@ -31,6 +31,39 @@ class AudioPlayer:
         time_elapsed = time.time() - self._stream_start_time
         return max(0, self._total_audio_duration - time_elapsed)
 
+    async def stream_bytes(self, raw_bytes: bytes) -> None:
+        """Stream raw PCM bytes to the player (no base64 decoding needed)."""
+        try:
+            chunk_samples = len(raw_bytes) // self._config.bytes_per_sample
+            chunk_duration = chunk_samples / self._config.output_sample_rate
+            self._total_audio_duration += chunk_duration
+            print(f"[AudioPlayer] stream_bytes: {len(raw_bytes)} bytes ({chunk_duration:.3f}s), total={self._total_audio_duration:.3f}s")
+
+            if self._is_first_chunk:
+                await self.cleanup()
+                self._start_player()
+                print(f"[AudioPlayer] ffplay started (pid={self._process.pid})")
+                self._stream_start_time = time.time()
+                self._is_first_chunk = False
+
+            if self._process and self._process.stdin and self._process.poll() is None:
+                loop = asyncio.get_event_loop()
+                process = self._process
+                await loop.run_in_executor(
+                    None,
+                    lambda: (process.stdin.write(raw_bytes), process.stdin.flush()),
+                )
+            else:
+                print(f"[AudioPlayer] process dead (poll={self._process.poll() if self._process else 'None'})")
+                await self.cleanup()
+
+        except BrokenPipeError:
+            print("Broken pipe - player process may have terminated")
+            await self.cleanup()
+        except Exception as e:
+            print(f"Error streaming audio bytes: {e}")
+            await self.cleanup()
+
     async def stream_chunk(self, audio_base64: str) -> None:
         """Stream a base64-encoded audio chunk to the player."""
         try:
