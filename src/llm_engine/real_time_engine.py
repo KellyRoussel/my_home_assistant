@@ -1,56 +1,55 @@
 import asyncio
+import base64
+import json
 import queue
 import subprocess
-import time
 from pathlib import Path
 from typing import Callable, Optional
 
+from agents import FunctionTool
+from agents.realtime import RealtimeAgent, RealtimeRunner
+
 from tools.tool import Tool
 from llm_engine.audio import AudioRecorder, AudioPlayer
-from llm_engine.realtime_session import RealtimeSession
-from llm_engine.event_handler import EventHandler
-from llm_engine.models import AudioConfig, ConversationResult, SessionConfig
+from llm_engine.models import AudioConfig, ConversationResult
+from session.conversation import Conversation
 from logger import logger, AppMessage, ErrorMessage
 
 _SCRIPT_DIR = Path(__file__).parent
 
 
+def _to_function_tool(tool: Tool) -> FunctionTool:
+    """Wrap a Tool instance as an SDK FunctionTool."""
+    schema = tool.json_definition_flatten
+
+    async def on_invoke_tool(ctx, args_str: str) -> str:
+        args = json.loads(args_str)
+        try:
+            result = await asyncio.to_thread(tool.execute, **args)
+            return str(result)
+        except Exception as e:
+            return f"Error: {e}"
+
+    return FunctionTool(
+        name=schema["name"],
+        description=schema["description"],
+        params_json_schema=schema["parameters"],
+        on_invoke_tool=on_invoke_tool,
+    )
+
+
 class RealTimeEngine:
     """
-    Facade coordinating real-time voice interaction.
+    Facade coordinating real-time voice interaction via the openai-agents SDK.
 
     Public API:
         - __init__(tools: list[Tool])
-        - start() -> Optional[str]
+        - start() -> Optional[ConversationResult]
     """
 
     def __init__(self, tools: list[Tool] = None):
-        try:
-            self._audio_config = AudioConfig()
-            self._session_config = SessionConfig(tools=list(tools) if tools else [])
-
-            # Components initialized per session
-            self._audio_queue: Optional[queue.Queue] = None
-            self._stop_event: Optional[asyncio.Event] = None
-            self._recorder: Optional[AudioRecorder] = None
-            self._player: Optional[AudioPlayer] = None
-            self._session: Optional[RealtimeSession] = None
-            self._event_handler: Optional[EventHandler] = None
-            self._is_processing = False
-
-        except Exception as e:
-            logger.log(ErrorMessage(content=f"{self.__class__.__name__} : __init__: {e}"))
-            raise
-
-    def _reset(self) -> None:
-        """Reset state between sessions."""
-        self._audio_queue = None
-        self._stop_event = None
-        self._recorder = None
-        self._player = None
-        self._session = None
-        self._event_handler = None
-        self._is_processing = False
+        self._tools = list(tools) if tools else []
+        self._audio_config = AudioConfig()
 
     async def start(
         self,
@@ -61,135 +60,145 @@ class RealTimeEngine:
         Start a real-time voice interaction session.
 
         Args:
-            on_user_transcript: Optional callback invoked immediately when the user transcript is available.
-            on_assistant_transcript: Optional callback invoked immediately when the assistant transcript is available.
+            on_user_transcript: Optional callback invoked when the user transcript is available.
+            on_assistant_transcript: Optional callback invoked when the assistant transcript is available.
 
         Returns a ConversationResult with user and assistant transcripts.
         """
-        result = None
-        audio_task = None
-        self._reset()
+        sdk_tools = [_to_function_tool(t) for t in self._tools]
+        agent = RealtimeAgent(
+            name="Jarvis",
+            instructions=Conversation()._get_prompt(),
+            tools=sdk_tools,
+        )
+        runner = RealtimeRunner(
+            starting_agent=agent,
+            config={
+                "model_settings": {
+                    "model_name": "gpt-realtime-mini",
+                    "voice": "echo",
+                    "modalities": ["audio"],
+                    "input_audio_format": "pcm16",
+                    "output_audio_format": "pcm16",
+                    "input_audio_transcription": {"model": "gpt-4o-mini-transcribe"},
+                    "turn_detection": {
+                        "type": "server_vad",
+                        "threshold": 0.5,
+                        "silence_duration_ms": 1000,
+                        "prefix_padding_ms": 500,
+                    },
+                }
+            },
+        )
 
-        # Initialize components
-        self._audio_queue = queue.Queue()
-        self._stop_event = asyncio.Event()
-        self._player = AudioPlayer(self._audio_config)
-        self._recorder = AudioRecorder(
+        audio_queue: queue.Queue = queue.Queue()
+        stop_recording = asyncio.Event()
+        player = AudioPlayer(self._audio_config)
+        recorder = AudioRecorder(
             config=self._audio_config,
-            on_audio_data=self._audio_queue.put_nowait,
+            on_audio_data=audio_queue.put_nowait,
         )
-        self._session = RealtimeSession(self._session_config)
-        self._event_handler = EventHandler(
-            on_audio_delta=self._player.stream_chunk,
-            on_audio_committed=lambda: self._stop_event.set(),
-            on_user_transcript=on_user_transcript,
-            on_assistant_transcript=on_assistant_transcript,
-        )
+
+        user_transcript: Optional[str] = None
+        assistant_transcript: Optional[str] = None
+        audio_task = None
 
         try:
-            async with self._session.connect() as connection:
-                logger.log(AppMessage(content="About to start recording..."))
-                self._notify()
-                await self._recorder.start(self._stop_event)
-                logger.log(
-                    AppMessage(content="Recording started, now starting event and audio processing...")
-                )
+            async with await runner.run() as session:
+                print("Session started. You can speak now...")
+                logger.log(AppMessage(content="Connected via openai-agents SDK"))
+                await recorder.start(stop_recording)
 
-                self._is_processing = True
+                async def send_audio_loop():
+                    while not stop_recording.is_set():
+                        try:
+                            b64 = audio_queue.get_nowait()
+                            await session.send_audio(base64.b64decode(b64))
+                        except queue.Empty:
+                            await asyncio.sleep(0.01)
 
-                event_task = asyncio.create_task(self._event_handler.process_events(connection))
-                audio_task = asyncio.create_task(self._process_audio_queue())
+                audio_task = asyncio.create_task(send_audio_loop())
+                await asyncio.to_thread(self._notify)
 
-                assistant_transcript = await event_task
-                result = ConversationResult(
-                    user_transcript=self._event_handler.user_transcript,
-                    assistant_transcript=assistant_transcript,
-                )
+                async for event in session:
+                    if event.type != "raw_model_event":
+                        print(f"[Event] {event.type}")
+
+                    if event.type == "agent_start":
+                        logger.log(AppMessage(content=f"Agent started: {event.agent.name}"))
+                        stop_recording.set()
+                        
+                    elif event.type == "agent_end":
+                        logger.log(AppMessage(content=f"Agent ended: {event.agent.name}"))
+
+                    elif event.type == "audio":
+                        await player.stream_bytes(event.audio.data)
+
+                    elif event.type == "audio_end":
+                        stop_recording.set()
+                        break
+
+                    elif event.type == "audio_interrupted":
+                        await player.cleanup()
+
+                    elif event.type == "tool_start":
+                        tool_name = getattr(event.tool, "name", str(event.tool))
+                        logger.log(AppMessage(content=f"Tool call: {tool_name}"))
+
+                    elif event.type == "tool_end":
+                        tool_name = getattr(event.tool, "name", str(event.tool))
+                        logger.log(AppMessage(content=f"Tool result: {tool_name} → {event.output}"))
+
+                    elif event.type == "handoff":
+                        from_name = getattr(event.from_agent, "name", str(event.from_agent))
+                        to_name = getattr(event.to_agent, "name", str(event.to_agent))
+                        logger.log(AppMessage(content=f"Handoff: {from_name} → {to_name}"))
+
+                    elif event.type == "raw_model_event":
+                        inner = event.data
+                        inner_type = getattr(inner, "type", None)
+                        if inner_type != "raw_server_event":
+                            print(f"  [raw] {inner_type}")
+                        if inner_type == "conversation.item.input_audio_transcription.completed":
+                            user_transcript = getattr(inner, "transcript", None)
+                            if user_transcript and on_user_transcript:
+                                on_user_transcript(user_transcript)
+                        elif inner_type == "response.audio_transcript.done":
+                            assistant_transcript = getattr(inner, "transcript", None)
+                            if assistant_transcript and on_assistant_transcript:
+                                on_assistant_transcript(assistant_transcript)
+
+                    elif event.type == "error":
+                        logger.log(ErrorMessage(content=f"SDK realtime error: {event.error}"))
+                        print(f"Error event: {event.error}")
+
+                if audio_task:
+                    audio_task.cancel()
 
         except Exception as e:
-            print(f"Error in main loop: {e}")
             logger.log(ErrorMessage(content=f"{self.__class__.__name__} : start: {e}"))
+            print(f"Error in RealTimeEngine.start: {e}")
         finally:
-            print("Finally")
-            self._stop_event.set()
-            self._is_processing = False
+            stop_recording.set()
+            if audio_task and not audio_task.done():
+                audio_task.cancel()
+            await player.wait_for_completion()
+            await player.cleanup()
 
-            if audio_task:
-                print("Cancelling audio processing task...")
-                await audio_task
-
-            print("Audio processing task done")
-            await self._handle_response_done()
-            print("Cleaning up player...")
-            self._reset()
-            print("Reset done")
-
-        return result
-
-    async def _handle_response_done(self) -> None:
-        """Wait for audio playback to complete and cleanup."""
-        if self._player:
-            await self._player.wait_for_completion()
-            await self._player.cleanup()
-
-    async def _process_audio_queue(self) -> None:
-        """Bridge between recorder queue and session."""
-        print("Processing audio queue...")
-        chunks_sent = 0
-        try:
-            while self._is_processing and not self._stop_event.is_set():
-                try:
-                    base64_audio = self._audio_queue.get_nowait()
-                    await self._session.send_audio(base64_audio)
-                    chunks_sent += 1
-                except queue.Empty:
-                    await asyncio.sleep(0.01)
-                    continue
-                except Exception as e:
-                    print(f"Error processing audio chunk: {e}")
-                    await asyncio.sleep(0.01)
-
-            print(f"[Audio queue] Exited loop - sent {chunks_sent} chunks, timeout_reached={self._recorder.timeout_reached if self._recorder else 'N/A'}")
-
-            # Handle timeout
-            if self._recorder and self._recorder.timeout_reached:
-                print("Sending commit event due to timeout...")
-                try:
-                    await self._session.commit_audio()
-                    print("Commit event sent successfully")
-                except Exception as e:
-                    print(f"Error sending commit event: {e}")
-
-        except Exception as e:
-            logger.log(ErrorMessage(content=f"{self.__class__.__name__} : _process_audio_queue: {e}"))
-            print(f"Error in _process_audio_queue: {e}")
+        return ConversationResult(
+            user_transcript=user_transcript,
+            assistant_transcript=assistant_transcript,
+        )
 
     def _notify(self, retries: int = 1) -> None:
         """Play notification sound."""
         try:
-            print("Playing notification sound...")
-            player_command = [
-                "ffplay",
-                "-nodisp",
-                "-autoexit",
-                str(_SCRIPT_DIR.parent / "listening.mp3"),
-            ]
-            start_time = time.perf_counter()
             subprocess.run(
-                player_command,
+                ["ffplay", "-nodisp", "-autoexit", str(_SCRIPT_DIR.parent / "listening.mp3")],
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
                 timeout=1.5,
             )
-            end_time = time.perf_counter()
-            duration = end_time - start_time
-            logger.log(AppMessage(content=f"ffplay duration {duration:.2f} seconds."))
-            print(f"ffplay duration {duration:.2f} seconds.")
         except subprocess.TimeoutExpired:
-            logger.log(
-                ErrorMessage(
-                    content=f"{self.__class__.__name__} : notify : ffplay timed out - remaining {retries} attempts"
-                )
-            )
             if retries > 0:
-                return self._notify(retries=retries - 1)
+                self._notify(retries=retries - 1)
