@@ -1,6 +1,6 @@
 openai==2.16.0
 openai[realtime]
-openai-agents
+openai-agents==0.8.3
 python-dotenv==1.0.1
 pyaudio==0.2.14
 openai-whisper==20231117
