@@ -9,3 +9,4 @@ class Config:
     TOKEN_FILE = PROJECT_ROOT / "secret_token.json"
     NOTIFICATION_SOUND = SRC_DIR / "listening.mp3"
     WORKDIR = PROJECT_ROOT / "workdir"
+    WAKE_WORD_SAMPLES_DIR = PROJECT_ROOT / "data" / "wake_word_samples"
