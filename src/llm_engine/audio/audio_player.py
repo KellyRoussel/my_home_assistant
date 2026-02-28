@@ -61,7 +61,7 @@ class AudioPlayer:
                     pid = self._process.pid if self._process else "None"
                     print(
                         f"[AudioPlayer] FREEZE DETECTED: stdin.write blocked >5s "
-                        f"(pid={pid}, pipe buffer likely full — ffplay may be stuck)"
+                        f"(pid={pid}, pipe buffer likely full - ffplay may be stuck)"
                     )
                     logger.log(ErrorMessage(content=f"AudioPlayer stdin write timeout (pid={pid}): ffplay deadlocked, killing process"))
                     await self.cleanup()
@@ -72,7 +72,7 @@ class AudioPlayer:
 
         except BrokenPipeError:
             pid = self._process.pid if self._process else "None"
-            print(f"[AudioPlayer] BrokenPipeError (pid={pid}) — ffplay stdin closed unexpectedly")
+            print(f"[AudioPlayer] BrokenPipeError (pid={pid}) - ffplay stdin closed unexpectedly")
             await self.cleanup()
         except Exception as e:
             print(f"[AudioPlayer] Error streaming audio bytes: {type(e).__name__}: {e}")
