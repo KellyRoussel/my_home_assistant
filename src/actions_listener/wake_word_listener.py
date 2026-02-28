@@ -30,12 +30,13 @@ class WakeWordListener:
                                vad_threshold=0.8,
                                inference_framework="tflite",
                                custom_verifier_models={"hey_jarvis_v0.1": str(_SCRIPT_DIR / "hey_jarvis_retrained.pkl")},
-                                custom_verifier_threshold=0.9)
+                                custom_verifier_threshold=0.7)
         self.mic_stream = None
     
     
 
     async def start_listening(self):
+        print("WakeWordListener: Starting to listen for wake word...")
         self.listening = True
         self.mic_stream = self.audio.open(format=pyaudio.paInt16, channels=1, rate=16000, input=True,
                                           frames_per_buffer=1280)
@@ -62,7 +63,7 @@ class WakeWordListener:
                             print(round(scores[-1],2), f"avg3: {sliding_avg}")
                             logger.log(AppMessage(content=f"~~~~\nNo detection, but score: {round(scores[-1],2)} \nsliding_avg: {round(sliding_avg, 2)} \nRMS: {round(rms,2)}\n~~~~"))
                         #if scores[-1] > 0.8:  # Threshold for detection
-                        if scores[-1] > 0.8 and sliding_avg > 0.6: # Trying something else
+                        if scores[-1] > 0.7: # Trying something else
                             if not self._wake_word_is_detected:
                                 self._wake_word_is_detected = True
                                 logger.log(AppMessage(content=f"Wakeword detected with sliding_avg: {round(sliding_avg, 2)} \nscore: {round(scores[-1],2)} \nRMS: {round(rms,2)}"))
@@ -97,7 +98,7 @@ class WakeWordListener:
             vad_threshold=0.8,
             inference_framework="tflite",
             custom_verifier_models={"hey_jarvis_v0.1": str(_SCRIPT_DIR / "hey_jarvis_retrained.pkl")},
-            custom_verifier_threshold=0.9
+            custom_verifier_threshold=0.7
             )
         self.mic_stream = self.audio.open(format=pyaudio.paInt16, channels=1, rate=16000, input=True, frames_per_buffer=1280)
         self._paused = False
@@ -115,6 +116,17 @@ class WakeWordListener:
                 wf.writeframes(audio_bytes)
         except Exception as e:
             logger.log(ErrorMessage(content=f"WakeWordListener: failed to save trigger audio: {e}"))
+
+    def reload_model(self):
+        self.oww_model = Model(
+            wakeword_models=[str(_SCRIPT_DIR / "hey_jarvis_v0.1.tflite")],
+            enable_speex_noise_suppression=True,
+            vad_threshold=0.8,
+            inference_framework="tflite",
+            custom_verifier_models={"hey_jarvis_v0.1": str(_SCRIPT_DIR / "hey_jarvis_retrained.pkl")},
+            custom_verifier_threshold=0.7,
+        )
+        self._wake_word_is_detected = False
 
     def set_detection_callback(self, callback):
         self._detect_callback = callback
