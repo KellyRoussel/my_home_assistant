@@ -68,6 +68,66 @@ class TodoList:
             logger.log(ErrorMessage(content=f"{self.__class__.__name__} : __get_items: {e}"))
             raise Exception(f"{self.__class__.__name__} : __get_items: {e}")
 
+    def get_items_with_checklist(self, access_token: str) -> list[dict]:
+        """
+        Get items from the todo list with their checklist sub-items expanded.
+        Returns list of dicts: {title, ingredients: [str], note: str}
+        """
+        try:
+            logger.log(AppMessage(content=f"Get items with checklist from {self.display_name}"))
+            response = requests.get(
+                self._url,
+                params={"$expand": "checklistItems"},
+                headers=self.__get_headers(access_token),
+            )
+            response.raise_for_status()
+            meals = []
+            for task in response.json().get("value", []):
+                ingredients = [
+                    ci["displayName"]
+                    for ci in task.get("checklistItems", [])
+                    if ci.get("displayName")
+                ]
+                note = task.get("body", {}).get("content", "").strip()
+                meals.append({"title": task["title"], "ingredients": ingredients, "note": note})
+            return meals
+        except Exception as e:
+            logger.log(ErrorMessage(content=f"{self.__class__.__name__} : get_items_with_checklist: {e}"))
+            raise Exception(f"{self.__class__.__name__} : get_items_with_checklist: {e}")
+
+    def add_item_with_note(self, access_token: str, title: str, note: str) -> str:
+        """
+        Add a task with a body/note and return the new task id.
+        """
+        try:
+            logger.log(AppMessage(content=f"Add '{title}' with note to {self.display_name}"))
+            payload = {
+                "title": title,
+                "body": {"content": note, "contentType": "text"},
+            }
+            response = requests.post(self._url, headers=self.__get_headers(access_token), json=payload)
+            response.raise_for_status()
+            return response.json()["id"]
+        except Exception as e:
+            logger.log(ErrorMessage(content=f"{self.__class__.__name__} : add_item_with_note: {e}"))
+            raise Exception(f"{self.__class__.__name__} : add_item_with_note: {e}")
+
+    def add_checklist_item(self, access_token: str, task_id: str, display_name: str) -> None:
+        """
+        Add a checklist sub-item to an existing task.
+        """
+        try:
+            url = f"{self._url}/{task_id}/checklistItems"
+            response = requests.post(
+                url,
+                headers=self.__get_headers(access_token),
+                json={"displayName": display_name},
+            )
+            response.raise_for_status()
+        except Exception as e:
+            logger.log(ErrorMessage(content=f"{self.__class__.__name__} : add_checklist_item: {e}"))
+            raise Exception(f"{self.__class__.__name__} : add_checklist_item: {e}")
+
     def add_item(self, access_token: str, item_name: str) -> str:
         """
         Add an item to the todo list

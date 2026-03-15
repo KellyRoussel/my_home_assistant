@@ -55,6 +55,7 @@ class RealTimeEngine:
         self,
         on_user_transcript: Optional[Callable[[str], None]] = None,
         on_assistant_transcript: Optional[Callable[[str], None]] = None,
+        keep_session_alive: Optional[Callable[[], bool]] = None,
     ) -> Optional[ConversationResult]:
         """
         Start a real-time voice interaction session.
@@ -136,7 +137,21 @@ class RealTimeEngine:
 
                     elif event.type == "audio_end":
                         stop_recording.set()
-                        break
+                        await player.wait_for_completion()
+                        if keep_session_alive and keep_session_alive():
+                            # Drain stale audio accumulated while the assistant was speaking
+                            while not audio_queue.empty():
+                                try:
+                                    audio_queue.get_nowait()
+                                except queue.Empty:
+                                    break
+                            stop_recording.clear()
+                            await recorder.start(stop_recording)
+                            if audio_task:
+                                audio_task.cancel()
+                            audio_task = asyncio.create_task(send_audio_loop())
+                        else:
+                            break
 
                     elif event.type == "audio_interrupted":
                         await player.cleanup()

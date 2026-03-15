@@ -4,6 +4,7 @@ from config import Config
 from llm_engine.real_time_engine import RealTimeEngine
 from logger import logger, AppMessage, ErrorMessage
 from session.assistant_context import AssistantContext, AssistantState
+from tools.meal_planning.meal_plan_state import MealPlanState
 from tools.tools_library import tools
 from actions_listener.wake_word_listener import WakeWordListener
 
@@ -37,6 +38,7 @@ class Assistant:
                 on_assistant_transcript=lambda text: self.context.running_conversation.new_assistant_message(
                     sanitize(text)
                 ),
+                keep_session_alive=lambda: (s := MealPlanState.load()) is not None and s.active,
             )
             print("Done")
         except Exception as e:
